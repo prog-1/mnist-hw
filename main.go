@@ -77,15 +77,18 @@ func (m mnistImages) printImage(pixels []byte) {
 	}
 }
 
-func main() {
-	filename := "data/t10k-images.idx3-ubyte"
-	f, err := os.Open(filename)
+func printImageFromMnistDatabase(dbFileName string, imgIndex uint) {
+	f, err := os.Open(dbFileName)
 	if err != nil {
 		panic("failed to open file")
 	}
 	defer f.Close()
 	m := ReadMnistImages(f)
-	m.printImage(m.getImageBytes(3))
+	m.printImage(m.getImageBytes(uint32(imgIndex)))
+}
+
+func main() {
+	printImageFromMnistDatabase("data/t10k-images.idx3-ubyte", 3)
 }
 
 // How to implement on-screen drawing:
