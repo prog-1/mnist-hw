@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	canvasRows    = 28
-	canvasColumns = 28
+	//rows and cols of the canvas and the digit images
+	rows    = 28
+	columns = 28
 )
 
 func (a *App) DrawCanvas(screen *ebiten.Image) {
@@ -23,8 +24,8 @@ func (a *App) DrawCanvas(screen *ebiten.Image) {
 		//Checking if mouse position is in canvas boundaries
 		if 0 <= x && x < screenWidth && 0 <= y && y < screenHeight {
 			//Converting mouse position to canvas coordinates
-			canvasX := x / canvasColumns
-			canvasY := y / canvasRows
+			canvasX := x / columns
+			canvasY := y / rows
 
 			//Setting the corresponding pixel on true (making white)
 			a.canvas[canvasY][canvasX] = true
@@ -54,9 +55,9 @@ func (a *App) DrawCanvas(screen *ebiten.Image) {
 		for x, column := range row {
 			if column {
 				//Drawing a white pixel where canvas value is true
-				for i := 1; i < canvasRows; i++ {
-					for j := 1; j < canvasColumns; j++ {
-						screen.Set(x*canvasColumns+i, y*canvasRows+j, color.White)
+				for i := 1; i < rows; i++ {
+					for j := 1; j < columns; j++ {
+						screen.Set(x*columns+i, y*rows+j, color.White)
 					}
 				}
 			}
