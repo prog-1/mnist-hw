@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -24,11 +23,11 @@ func main() {
 	//######################## MNIST data read #########################
 
 	//reading MNIST data set
-	pixels := readGZ("data/train-images-idx3-ubyte.gz")
+	//pixels := readGZ("data/train-images-idx3-ubyte.gz")
 
 	//Printing one digit from data set
-	n := 43 //digit index (max 75)
-	fmt.Println(printMnist(pixels[n*rows*columns : (n+1)*rows*columns]))
+	//n := 43 //digit index (max 75)
+	//fmt.Println(printMnist(pixels[n*rows*columns : (n+1)*rows*columns]))
 
 	//####################### Ebiten #########################
 
@@ -37,7 +36,7 @@ func main() {
 	ebiten.SetWindowTitle("MNIST stuff")
 
 	//App instance
-	a := NewApp(screenWidth, screenHeight, canvas)
+	a := NewApp()
 
 	//Running app
 	if err := ebiten.RunGame(a); err != nil {
@@ -47,5 +46,5 @@ func main() {
 	//####################### Print #########################
 
 	//Canvas print in console after app closure
-	printCanvas(a.canvas)
+	//printCanvas(a.canvas)
 }

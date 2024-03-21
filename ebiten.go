@@ -1,6 +1,8 @@
 package main
 
 import (
+	"image/color"
+
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -11,22 +13,27 @@ const (
 )
 
 type App struct {
-	width, height int      //screen width & height
-	canvas        [][]bool //2d bool slice (of alya pixels)
+	screen *ebiten.Image
 }
 
 func (a *App) Update() error {
+	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+
+		x, y := ebiten.CursorPosition()
+
+		a.screen.Set(x, y, color.White)
+	}
 	return nil
 }
 
 func (a *App) Draw(screen *ebiten.Image) {
-	a.DrawCanvas(screen)
+	screen.DrawImage(a.screen, nil)
 }
 
 func (a *App) Layout(inWidth, inHeight int) (int, int) {
-	return a.width, a.height
+	return rows, columns
 }
 
-func NewApp(width, height int, canvas [][]bool) *App {
-	return &App{width: width, height: height, canvas: canvas}
+func NewApp() *App {
+	return &App{ebiten.NewImage(rows, columns)}
 }
