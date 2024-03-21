@@ -6,19 +6,13 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
+const (
+	//rows and cols of the canvas and the digit images
+	rows    = 28
+	columns = 28
+)
+
 func main() {
-
-	//######################## Canvas #########################
-
-	//Calculating canvas height & width
-	canvasHeight := screenHeight / rows
-	canvasWidth := screenWidth / columns
-
-	//Initializing canvas
-	canvas := make([][]bool, canvasHeight)
-	for i := range canvas {
-		canvas[i] = make([]bool, canvasWidth)
-	}
 
 	//######################## MNIST data read #########################
 
@@ -33,7 +27,7 @@ func main() {
 
 	//Window
 	ebiten.SetWindowSize(screenWidth, screenHeight)
-	ebiten.SetWindowTitle("MNIST stuff")
+	ebiten.SetWindowTitle("MNIST")
 
 	//App instance
 	a := NewApp()
@@ -45,6 +39,5 @@ func main() {
 
 	//####################### Print #########################
 
-	//Canvas print in console after app closure
-	//printCanvas(a.canvas)
+	//print the stuff here
 }

@@ -43,8 +43,8 @@ func readGZ(filename string) []byte {
 	}
 
 	//Parsing image count
-	var imageCount uint32
-	if err := binary.Read(gzReader, binary.BigEndian, &imageCount); err != nil {
+	var pixelCount uint32
+	if err := binary.Read(gzReader, binary.BigEndian, &pixelCount); err != nil {
 		log.Fatal(err)
 	}
 
@@ -58,7 +58,7 @@ func readGZ(filename string) []byte {
 	}
 
 	// Parsing all image data into single array of pixels
-	pixels := make([]byte, imageCount)
+	pixels := make([]byte, pixelCount)
 
 	if _, err := io.ReadFull(gzReader, pixels); err != nil {
 		log.Fatal(err)
