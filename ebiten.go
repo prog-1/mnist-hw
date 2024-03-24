@@ -32,12 +32,14 @@ func NewGame() *App {
 func (a *App) Layout(outWidth, outHeight int) (w, h int) { return colCount, rowCount }
 func (a *App) Update() error {
 	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
+		ClearConsole()
 		a.drawScreenInConsole()
 	} else if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		a.handleDrawing()
-	} else if ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight) {
+	} else if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
 		a.screenBuffer.Clear()
 		a.resetMousePrevCoord()
+		ClearConsole()
 	}
 	a.updateMousePrevCoord()
 	return nil
