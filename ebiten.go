@@ -49,6 +49,14 @@ func (a *App) Draw(screen *ebiten.Image) {
 	screen.DrawImage(a.screenBuffer, &ebiten.DrawImageOptions{})
 }
 
+func (a *App) updateMousePrevCoord() {
+	a.mousePrevX, a.mousePrevY = ebiten.CursorPosition()
+}
+
+func (a *App) resetMousePrevCoord() {
+	a.mousePrevX, a.mousePrevY = -1, -1
+}
+
 // Colours pixels under the cursor with shades of gray when LMB is pressed
 // using cursor position from the previous frame(pass -1, -1 if it's the first frame).
 func (a *App) handleDrawing() {
@@ -58,14 +66,6 @@ func (a *App) handleDrawing() {
 	} else {
 		vector.StrokeLine(a.screenBuffer, float32(a.mousePrevX), float32(a.mousePrevY), float32(x), float32(y), strokeWidth, color.White, true)
 	}
-}
-
-func (a *App) updateMousePrevCoord() {
-	a.mousePrevX, a.mousePrevY = ebiten.CursorPosition()
-}
-
-func (a *App) resetMousePrevCoord() {
-	a.mousePrevX, a.mousePrevY = -1, -1
 }
 
 // Draws screen buffer's content with ASCII characters in console.
