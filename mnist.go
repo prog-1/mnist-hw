@@ -62,10 +62,10 @@ func (m mnistImages) getImageBytes(i uint32) []byte {
 	return m.Pixels[i*m.Rows*m.Cols : (i+1)*m.Rows*m.Cols]
 }
 
-func (m mnistImages) printImage(pixels []byte) {
-	for i := uint32(0); i < m.Rows; i++ {
-		for j := uint32(0); j < m.Cols; j++ {
-			if pixel := pixels[i*m.Cols+j]; pixel == 0 {
+func printImage(rowCount, colCount uint32, pixels []byte) {
+	for r := uint32(0); r < rowCount; r++ {
+		for c := uint32(0); c < colCount; c++ {
+			if pixel := pixels[r*colCount+c]; pixel == 0 {
 				fmt.Print(" ")
 			} else if pixel < 128 {
 				fmt.Print(".")
@@ -84,5 +84,5 @@ func printImageFromMnistDatabase(dbFileName string, imgIndex uint) {
 	}
 	defer f.Close()
 	m := ReadMnistImages(f)
-	m.printImage(m.getImageBytes(uint32(imgIndex)))
+	printImage(m.Rows, m.Cols, m.getImageBytes(uint32(imgIndex)))
 }

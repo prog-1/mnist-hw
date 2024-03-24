@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"image/color"
 	"log"
 
@@ -33,7 +32,7 @@ func (a *App) Layout(outWidth, outHeight int) (w, h int) { return colCount, rowC
 func (a *App) Update() error {
 	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
 		ClearConsole()
-		a.drawScreenInConsole()
+		printImage(rowCount, colCount, a.pixelAlphas())
 	} else if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		a.handleDrawing()
 	} else if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
@@ -68,22 +67,16 @@ func (a *App) handleDrawing() {
 	}
 }
 
-// Draws screen buffer's content with ASCII characters in console.
-func (a *App) drawScreenInConsole() {
+// Returns alpha values of logical pixels on the screen.
+func (a *App) pixelAlphas() []byte {
+	alphas := make([]byte, rowCount*colCount)
 	for r := 0; r < rowCount; r++ {
 		for c := 0; c < colCount; c++ {
 			// Type assertions - https://go.dev/tour/methods/15
-			alpha := a.screenBuffer.At(c, r).(color.RGBA).A
-			if alpha == 0 {
-				fmt.Print(" ")
-			} else if alpha < 128 { // 255/2 = 127.5 ~ 128
-				fmt.Print(".")
-			} else {
-				fmt.Print("#")
-			}
+			alphas[r*colCount+c] = a.screenBuffer.At(c, r).(color.RGBA).A
 		}
-		fmt.Println()
 	}
+	return alphas
 }
 
 // Initialises app and runs main loop that handles drawing on screen.
