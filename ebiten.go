@@ -10,6 +10,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+	"gonum.org/v1/gonum/mat"
 )
 
 const (
@@ -53,7 +54,7 @@ func (a *App) Update() error {
 		a.prevCursorPosY = y
 
 	} else if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
-		fmt.Println(a.PrintScreen())
+		a.PrintScreen()
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyD) {
@@ -85,23 +86,43 @@ func NewApp() *App {
 	return &App{ebiten.NewImage(rows, columns), 0, 0}
 }
 
-// Prints content drawed on the screen
-func (a *App) PrintScreen() string {
+// Prints content drawed on the screen to the console
+func (a *App) PrintScreen() {
 
-	var print []byte
+	var pb []byte //print buffer
 
-	for i := 0; i < rows; i++ {
-		for j := 0; j < columns; j++ {
-			_, _, _, a := a.screen.At(j, i).RGBA()
-			if a == 0 {
-				print = append(print, ' ', ' ')
-			} else if a < 32767 {
-				print = append(print, '.', '.')
+	for r := 0; r < rows; r++ { //for each row (r - row)
+		for c := 0; c < columns; c++ { //for each column (c - column)
+
+			_, _, _, alpha := a.screen.At(c, r).RGBA() //taking alpha channel from current pixel
+
+			if alpha == 0 {
+				pb = append(pb, ' ', ' ')
+			} else if alpha < 32767 { //some magic number that is equal to 128 in byte or something
+				pb = append(pb, '.', '.')
 			} else {
-				print = append(print, '#', '#')
+				pb = append(pb, '#', '#')
 			}
 		}
-		print = append(print, '\n')
+		pb = append(pb, '\n')
 	}
-	return string(print)
+
+	fmt.Println(string(pb)) //converting and printing the print buffer
+}
+
+// Converts screen pixels into input matrix {n, size}
+func (a *App) ScreenToMatrix() *mat.Dense {
+
+	var pixels []float64 //single slice of all screen pixels
+
+	for r := 0; r < rows; r++ { //for each row (r - row)
+		for c := 0; c < columns; c++ { //for each column (c - column)
+
+			_, _, _, alpha := a.screen.At(c, r).RGBA() //taking alpha from current pixel
+
+			pixels = append(pixels, float64(alpha)) //saving into slice of pixels
+		}
+	}
+
+	return mat.NewDense(n, size, pixels)
 }

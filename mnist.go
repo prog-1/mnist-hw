@@ -71,8 +71,8 @@ func readGZ(filename string) (input *mat.Dense) {
 
 	//################################################
 
-	// Parsing all image data into single array of pixels
-	pixels := make([]byte, un*uint32(size))
+	// Parsing all image data into single slice of pixels
+	pixels := make([]byte, n*size)
 
 	if _, err := io.ReadFull(gzReader, pixels); err != nil {
 		log.Fatal(err)
@@ -89,9 +89,11 @@ func readGZ(filename string) (input *mat.Dense) {
 	return input
 }
 
-// Printing one data set digit in the console
-func printMnist(pixels []float64) string {
-	var pb []byte              //print buffer
+// Printing one data set digit to the console
+func printDigit(pixels []float64) {
+
+	var pb []byte //print buffer
+
 	for i, p := range pixels { //p - pixel
 		if i%columns == 0 {
 			pb = append(pb, '\n')
@@ -104,7 +106,8 @@ func printMnist(pixels []float64) string {
 			pb = append(pb, '#', '#')
 		}
 	}
-	return string(pb)
+
+	fmt.Println(string(pb))
 }
 
 // Conversion of []byte into []float64
