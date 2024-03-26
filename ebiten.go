@@ -19,13 +19,14 @@ const (
 )
 
 type App struct {
-
 	//For drawing
 	screen                         *ebiten.Image //screen buffer
 	prevCursorPosX, prevCursorPosY int           //previous mouse position to draw the line with anti-aliasing
 }
 
 func (a *App) Update() error {
+
+	//Drawing handling
 
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) { //if the mouse is pressed first time
 
@@ -84,6 +85,7 @@ func NewApp() *App {
 	return &App{ebiten.NewImage(rows, columns), 0, 0}
 }
 
+// Prints content drawed on the screen
 func (a *App) PrintScreen() string {
 
 	var print []byte
