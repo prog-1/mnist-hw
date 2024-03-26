@@ -13,13 +13,13 @@ import (
 
 const (
 
-	//proper format of magic number and labels
+	//Proper format of magic number and labels
 	wantMagic = 0x00000803
 	wantLabel = 0x00000801
 )
 
-// Reads MNIST image data from a .gz file and returns input matrix of {n, size}
-func readGZ(filename string) (input *mat.Dense) {
+// Reads MNIST image data from a .gz file and returns x (input) matrix of {n, size}
+func readGZ(filename string) (x *mat.Dense) {
 
 	//Opening .gz file
 	file, err := os.Open(filename)
@@ -82,11 +82,11 @@ func readGZ(filename string) (input *mat.Dense) {
 	//fmt.Println("size:", size)
 	//fmt.Println("len pixels:", len(pixels))
 
-	input = mat.NewDense(n, size, byteToFloat(pixels))
+	x = mat.NewDense(n, size, byteToFloat(pixels))
 
 	//################################################
 
-	return input
+	return x
 }
 
 // Printing one data set digit to the console

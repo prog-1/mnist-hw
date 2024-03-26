@@ -9,7 +9,7 @@ import (
 var rows, columns int //global variable of rows and columns of the canvas and the digit images
 var size int          //global variable of area of each image in pixels (28*28 = 784)
 var n int             //global variable of mnist image count
-const outCount = 10   //output count of the digits from 0 to 9
+const digits = 10     //output count of the digits from 0 to 9
 
 func main() {
 
@@ -17,6 +17,7 @@ func main() {
 
 	//reading MNIST data set
 	//pixels := readGZ("data/train-images-idx3-ubyte.gz")
+	readGZ("data/train-images-idx3-ubyte.gz")
 
 	//Printing one digit from data set
 	//i := 59999 //digit index (min - 0 | max - 59999)
@@ -36,7 +37,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	//####################### Print #########################
+	//###########################################################
 
-	//print the stuff here
 }
