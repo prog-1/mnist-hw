@@ -25,7 +25,7 @@ type mnistImages struct {
 	Pixels     []byte
 }
 
-func ReadMnistImages(r io.Reader) mnistImages {
+func ReadMnistImages(r io.Reader) *mnistImages {
 	var magic, imgCount, rows, cols uint32
 	if err := binary.Read(r, binary.BigEndian, &magic); err != nil {
 		fmt.Errorf("failed to read magic number: %v", err)
@@ -54,11 +54,20 @@ func ReadMnistImages(r io.Reader) mnistImages {
 		fmt.Errorf("read %d bytes; want %d", n, len(pixels))
 	}
 
-	return mnistImages{imgCount, rows, cols, pixels}
+	return &mnistImages{imgCount, rows, cols, pixels}
+}
+
+func ReadMnistDB(path string) (*mnistImages, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file %q", path)
+	}
+	defer f.Close()
+	return ReadMnistImages(f), nil
 }
 
 // Returns bytes resposnible for the image with the index given
-func (m mnistImages) getImageBytes(i uint32) []byte {
+func (m mnistImages) imageBytes(i uint32) []byte {
 	return m.Pixels[i*m.Rows*m.Cols : (i+1)*m.Rows*m.Cols]
 }
 
@@ -75,14 +84,4 @@ func printImage(rowCount, colCount uint32, pixels []byte) {
 		}
 		fmt.Println()
 	}
-}
-
-func printImageFromMnistDatabase(dbFileName string, imgIndex uint) {
-	f, err := os.Open(dbFileName)
-	if err != nil {
-		panic("failed to open file")
-	}
-	defer f.Close()
-	m := ReadMnistImages(f)
-	printImage(m.Rows, m.Cols, m.getImageBytes(uint32(imgIndex)))
 }

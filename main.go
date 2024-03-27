@@ -7,8 +7,11 @@ import (
 )
 
 func main() {
-	// printImageFromMnistDatabase("data/t10k-images.idx3-ubyte", 3)
-	RunDrawing()
+	m, err := ReadMnistDB("data/t10k-images.idx3-ubyte")
+	if err != nil {
+		panic(err)
+	}
+
 }
 
 func ClearConsole() {
