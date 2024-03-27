@@ -16,6 +16,7 @@ import (
 type Game struct {
 	screen       *ebiten.Image
 	prevX, prevY int
+	w, b         *mat.Dense
 }
 
 func (g *Game) Update() error {
@@ -27,6 +28,20 @@ func (g *Game) Update() error {
 		x, y := ebiten.CursorPosition()
 		vector.StrokeLine(g.screen, float32(x), float32(y), float32(g.prevX), float32(g.prevY), 2, color.White, true)
 		g.prevX, g.prevY = x, y
+	} else if ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight) {
+		g.screen = ebiten.NewImage(960, 720)
+	}
+	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
+		inputs := make([]float64, 0, 28*28)
+		g.prevX, g.prevY = -1, -1
+		for i := 0; i < 28; i++ {
+			for j := 0; j < 28; j++ {
+				color := g.screen.At(i, j)
+				_, _, _, a := color.RGBA()
+				inputs = append(inputs, float64(65535/255)*float64(a))
+			}
+		}
+		fmt.Println(predict(inputs, g.w, g.b))
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyEscape) {
 		os.Exit(0)
@@ -71,9 +86,13 @@ func dCost(inputs, y, p *mat.Dense) (dw, db *mat.Dense) {
 	dw = mat.NewDense(784, 10, nil)
 	db = mat.NewDense(1, 10, nil)
 	r, c := p.Dims()
+	l := mat.NewDense(r, c, nil)
 	for i := 0; i < r; i++ {
 		for j := 0; j < c; j++ {
-			diff := y.At(i, 0) - p.At(i, j)
+			if int(y.At(i, 0)) == j {
+				l.Set(i, j, 1)
+			}
+			diff := p.At(i, j) - l.At(i, j)
 			for k := 0; k < 784; k++ {
 				dw.Set(k, j, dw.At(k, j)+inputs.At(i, k)*diff/float64(c))
 			}
@@ -84,7 +103,22 @@ func dCost(inputs, y, p *mat.Dense) (dw, db *mat.Dense) {
 }
 
 func accuracy(inputs, y []float64, w, b *mat.Dense) float64 {
-	var res, max, maxN float64
+	var res float64
+	for i := 0; i < len(inputs)/784; i++ {
+		n := predict(inputs, w, b)
+		if int(y[i]) == n {
+			res++
+		}
+		if i%1000 == 0 {
+			fmt.Println(i)
+		}
+	}
+	return res / float64(len(y)) * 100
+}
+
+func predict(inputs []float64, w, b *mat.Dense) int {
+	var max float64
+	var maxN int
 	_, c := b.Dims()
 	for i := 0; i < len(inputs)/784; i++ {
 		x := mat.NewDense(1, 784, inputs[i*784:(i+1)*784])
@@ -93,14 +127,11 @@ func accuracy(inputs, y []float64, w, b *mat.Dense) float64 {
 			tmp := pred.At(0, j)
 			if max < tmp {
 				max = tmp
-				maxN = float64(j)
+				maxN = j
 			}
 		}
-		if y[i] == maxN {
-			res++
-		}
 	}
-	return res / float64(len(y)) * 100
+	return maxN
 }
 
 func main() {
@@ -119,12 +150,11 @@ func main() {
 		yTest = append(yTest, float64(testLabels[i]))
 	}
 	inputsTrain, labelsTrain := mat.NewDense(60000, 784, xTrain), mat.NewDense(len(yTrain), 1, yTrain)
+	w, squaredGradW := mat.NewDense(784, 10, nil), mat.NewDense(784, 10, nil)
+	b, squaredGradB := mat.NewDense(1, 10, nil), mat.NewDense(1, 10, nil)
 	go func() {
-		epochs := int(1e5)
-		printEveryNthEpochs := int(1e4)
+		epochs := int(1e2)
 		learningRate := 1e-3
-		w, squaredGradW := mat.NewDense(784, 10, nil), mat.NewDense(784, 10, nil)
-		b, squaredGradB := mat.NewDense(1, 10, nil), mat.NewDense(1, 10, nil)
 		epsilon := 1e-8
 		for i := 0; i <= epochs; i++ {
 			y := inference(xTrain, w, b)
@@ -140,13 +170,12 @@ func main() {
 				squaredGradB.Set(0, j, squaredGradB.At(0, j)+db.At(0, j)*db.At(0, j))
 				b.Set(0, j, b.At(0, j)-(learningRate/math.Sqrt(squaredGradB.At(0, j)+epsilon))*db.At(0, j))
 			}
-			if i%printEveryNthEpochs == 0 {
-				fmt.Printf(`accuracy: %.2f`, accuracy(xTest, yTest, w, b))
-			}
+			fmt.Println(i)
 		}
+		fmt.Printf(`Accuracy: %.2f`, accuracy(xTest, yTest, w, b))
 	}()
 	ebiten.SetWindowSize(960, 720)
-	if err := ebiten.RunGame(&Game{ebiten.NewImage(28, 28), -1, -1}); err != nil {
+	if err := ebiten.RunGame(&Game{ebiten.NewImage(28, 28), -1, -1, w, b}); err != nil {
 		log.Fatal(err)
 	}
 }
