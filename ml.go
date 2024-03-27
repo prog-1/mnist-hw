@@ -6,7 +6,11 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
-func sigmoid(i, j int, v float64) float64 {
+const (
+	digitCount = 10
+)
+
+func sigmoid(_, _ int, v float64) float64 {
 	return 1 / (1 + math.Exp(-v))
 }
 
@@ -23,8 +27,31 @@ func inference(pixels, weights, biases *mat.Dense) (predictions *mat.Dense) {
 	return predictions
 }
 
-// Returns gradient of the loss function, i.e. derivatives of all the weights and biases.
-// Dimensions(rows x columns): pixels - N x 784, dw - 784 x 10, db -
-func dCost(pixels *mat.Dense) (dw, db *mat.Dense) {
+// Converts original label/digit, into 10 element array of chances. Same size as prediciton.
+// Dimensions: original - N x 1, converted - N x 10
+func convertLabels(original *mat.Dense) (converted *mat.Dense) {
+	N, _ := original.Dims()
+	converted = mat.NewDense(N, digitCount, nil)
+	for i := 0; i < N; i++ {
+		converted.Set(i, int(original.At(i, 1)), 1)
+	}
+	return converted
+}
 
+// Returns gradient of the loss function, i.e. derivatives of all the weights and biases.
+// Dimensions(rows x columns): pixels - N x 784, labels - N x 10, predictions - N x 10, dw - 1 x 784, db - 1 x 10
+func dCost(pixels, labels, predictions *mat.Dense) (dw, db *mat.Dense) {
+	// RowCount, ColCount := pixels.Dims()
+	N, PC := pixels.Dims() // PC - pixel count
+	diff := mat.NewDense(N, digitCount, nil)
+	diff.Sub(labels, predictions)
+	// for c := 0; c < ColCount; c++ {// Parameters/Pixels
+	// 	for r := 0; r < RowCount; r++ {// Images
+	// 	}
+	// }
+	dw = mat.NewDense(1, PC, nil)
+	db = mat.NewDense(1, digitCount, nil)
+	dw.Apply(func(i, j int, v float64) float64 {
+		dw.At(i, j) += 2 / N * diff.At(i)
+	}, dw)
 }
