@@ -62,12 +62,12 @@ func main() {
 	if err := ebiten.RunGame(g); err != nil {
 		log.Fatal(err)
 	}
-	//images := readData("t10k-images.idx3-ubyte")
-	//labels := readData("t10k-labels.idx1-ubyte")
+	//images := ReadImages("t10k-images.idx3-ubyte")
+	labels := ReadLabels("t10k-labels.idx1-ubyte")
 	trainImages := ReadImages("train-images.idx3-ubyte")
 	trainLabels := ReadLabels("train-labels.idx1-ubyte")
-	//Mimages := toMatrix(images, 1000, 784)
-	//Mlabels := toMatrix(labels, 10000, 1)
+	//Mimages := toMatrix(images, 10000, 784)
+	Mlabels := toMatrix(labels, 10000, 1)
 	MtrainImages := toMatrix(trainImages, 60000, 784)
 	MtrainLabels := toMatrix(trainLabels, 60000, 1)
 	w := mat.NewDense(784, 10, nil)
@@ -77,10 +77,12 @@ func main() {
 		oneXtenSlice = append(oneXtenSlice, 1)
 	}
 	onexTen := mat.NewDense(1, 10, oneXtenSlice)
-	var moreYtrain mat.Dense
+	var moreYtrain, moreYtest mat.Dense
 	moreYtrain.Mul(MtrainLabels, onexTen)
-	dw, db := gradient(MtrainImages, &moreYtrain, w, b, 0.1)
+	moreYtest.Mul(Mlabels, onexTen)
+	dw, db := gradient(MtrainImages, &moreYtrain, w, b, 0.1, 100)
 	fmt.Println(dw, db)
+	//fmt.Println(accuracy(Mimages, &moreYtest, w, b))
 }
 func toMatrix(images []byte, rows, columns int) *mat.Dense {
 	data := make([]float64, len(images))
@@ -119,7 +121,6 @@ func ReadImages(filePath string) []byte {
 	}
 	return images
 }
-
 func ReadLabels(filePath string) []byte {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -175,10 +176,29 @@ func dCost(inputs, y *mat.Dense, p mat.Dense, alpha float64) (dw, db mat.Dense) 
 
 	return dw, db
 } // gradient shows direction to max
-func gradient(inputs, y *mat.Dense, w, b *mat.Dense, alpha float64) (dw, db mat.Dense) {
-	p := Inference(inputs, w, b)
-	dw, db = dCost(inputs, y, p, alpha)
-	w.Sub(w, &dw)
-	b.Sub(b, &db)
+func gradient(inputs, y *mat.Dense, w, b *mat.Dense, alpha float64, epochs int) (dw, db mat.Dense) {
+	for i := 0; i < epochs; i++ {
+		p := Inference(inputs, w, b)
+		dw, db = dCost(inputs, y, p, alpha)
+		w.Sub(w, &dw)
+		b.Sub(b, &db)
+	}
 	return dw, db
+}
+func accuracy(inputs, y *mat.Dense, w, b *mat.Dense) float64 {
+	p := Inference(inputs, w, b)
+	var correct int
+	for i := 0; i < 10000; i++ {
+		var max, index float64
+		for j := 0; j < 10; j++ {
+			if p.At(i, j) > max {
+				max = p.At(i, j)
+				index = float64(j)
+			}
+		}
+		if y.At(i, 0) == index {
+			correct++
+		}
+	}
+	return float64(correct) / 10000
 }
