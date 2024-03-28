@@ -39,7 +39,7 @@ func convertLabels(original *mat.Dense) (converted *mat.Dense) {
 }
 
 // Returns gradient of the loss function, i.e. derivatives of all the weights and biases.
-// Dimensions(rows x columns): pixels - N x 784, labels - N x 10, predictions - N x 10, dw - 1 x 784, db - 1 x 10
+// Dimensions(rows x columns): pixels - N x 784, labels - N x 10, predictions - N x 10, dw - 784 x 10, db - 1 x 10
 func dCost(pixels, labels, predictions *mat.Dense) (dw, db *mat.Dense) {
 	// RowCount, ColCount := pixels.Dims()
 	imageCount, _ := pixels.Dims()
@@ -49,12 +49,33 @@ func dCost(pixels, labels, predictions *mat.Dense) (dw, db *mat.Dense) {
 	dw.Mul(pixels.T(), diff) // dw = Xt * diff -- 784 x 10
 	dw.Scale(2/float64(imageCount), dw)
 
-	gradientB := make([]float64, digitCount)
-	for i := range gradientB {
-		gradientB[i] = mat.Sum(diff.ColView(i))
+	tmpdb := make([]float64, digitCount)
+	for i := range tmpdb {
+		tmpdb[i] = mat.Sum(diff.ColView(i))
 	}
-	db = mat.NewDense(1, digitCount, gradientB)
+	db = mat.NewDense(1, digitCount, tmpdb)
 	db.Scale(2/float64(imageCount), db)
 
 	return dw, db
+}
+
+// Dims(r x c): w/dw - 10 x 784, b/db - 1 x 10
+func train(epochCount int, pixels, labels *mat.Dense, lrw, lrb float64,
+	sink func(epoch int, w, dw, b, db *mat.Dense)) (w, b *mat.Dense, err error) {
+	_, pixelCount := pixels.Dims()
+	w = mat.NewDense(digitCount, pixelCount, nil) // w - 10 x 784, initialized with zeroes
+	b = mat.NewDense(1, digitCount, nil)
+	for epoch := 0; epoch < epochCount; epoch++ {
+		dw, db := dCost(pixels, labels, inference(pixels, w, b))
+
+		// Adjusting weights
+		db.Scale(lrb, db)
+		b.Sub(b, db)
+
+		dw.Scale(lrw, dw)
+		w.Sub(w, dw)
+
+		sink(epoch, w, dw, b, db)
+	}
+	return w, b, nil
 }
