@@ -42,16 +42,19 @@ func convertLabels(original *mat.Dense) (converted *mat.Dense) {
 // Dimensions(rows x columns): pixels - N x 784, labels - N x 10, predictions - N x 10, dw - 1 x 784, db - 1 x 10
 func dCost(pixels, labels, predictions *mat.Dense) (dw, db *mat.Dense) {
 	// RowCount, ColCount := pixels.Dims()
-	N, PC := pixels.Dims() // PC - pixel count
-	diff := mat.NewDense(N, digitCount, nil)
-	diff.Sub(labels, predictions)
-	// for c := 0; c < ColCount; c++ {// Parameters/Pixels
-	// 	for r := 0; r < RowCount; r++ {// Images
-	// 	}
-	// }
-	dw = mat.NewDense(1, PC, nil)
-	db = mat.NewDense(1, digitCount, nil)
-	dw.Apply(func(i, j int, v float64) float64 {
-		dw.At(i, j) += 2 / N * diff.At(i)
-	}, dw)
+	imageCount, _ := pixels.Dims()
+	diff := mat.NewDense(imageCount, digitCount, nil)
+	diff.Sub(predictions, labels)
+
+	dw.Mul(pixels.T(), diff) // dw = Xt * diff -- 784 x 10
+	dw.Scale(2/float64(imageCount), dw)
+
+	gradientB := make([]float64, digitCount)
+	for i := range gradientB {
+		gradientB[i] = mat.Sum(diff.ColView(i))
+	}
+	db = mat.NewDense(1, digitCount, gradientB)
+	db.Scale(2/float64(imageCount), db)
+
+	return dw, db
 }
