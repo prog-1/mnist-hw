@@ -62,15 +62,15 @@ func main() {
 	if err := ebiten.RunGame(g); err != nil {
 		log.Fatal(err)
 	}
-	//images := ReadImages("t10k-images.idx3-ubyte")
+	images := ReadImages("t10k-images.idx3-ubyte")
 	labels := ReadLabels("t10k-labels.idx1-ubyte")
 	trainImages := ReadImages("train-images.idx3-ubyte")
 	trainLabels := ReadLabels("train-labels.idx1-ubyte")
-	//Mimages := toMatrix(images, 10000, 784)
+	Mimages := toMatrix(images, 10000, 784)
 	Mlabels := toMatrix(labels, 10000, 1)
 	MtrainImages := toMatrix(trainImages, 60000, 784)
 	MtrainLabels := toMatrix(trainLabels, 60000, 1)
-	w := mat.NewDense(784, 10, nil)
+	w := mat.NewDense(784, 10, nil) // random weights todo
 	b := mat.NewDense(1, 10, nil)
 	var oneXtenSlice []float64
 	for i := 0; i < 10; i++ {
@@ -80,9 +80,25 @@ func main() {
 	var moreYtrain, moreYtest mat.Dense
 	moreYtrain.Mul(MtrainLabels, onexTen)
 	moreYtest.Mul(Mlabels, onexTen)
-	dw, db := gradient(MtrainImages, &moreYtrain, w, b, 0.1, 100)
+	dw, db := gradientDescent(MtrainImages, &moreYtrain, w, b, 0.1, 100) // two learning
 	fmt.Println(dw, db)
-	//fmt.Println(accuracy(Mimages, &moreYtest, w, b))
+	fmt.Println(accuracy(Mimages, &moreYtest, w, b))
+
+	var drawnImage []float64
+	for i := 0; i < 28; i++ {
+		for j := 0; j < 28; j++ {
+			_, _, _, a := g.newDimension.At(j, i).RGBA()
+			if a > 0 {
+				drawnImage = append(drawnImage, 1)
+			} else {
+				drawnImage = append(drawnImage, 0)
+			}
+		}
+	}
+	drawnImageMatrix := mat.NewDense(1, 784, drawnImage)
+	p := Inference(drawnImageMatrix, w, b)
+	fmt.Println(mat.Formatted(&p))
+
 }
 func toMatrix(images []byte, rows, columns int) *mat.Dense {
 	data := make([]float64, len(images))
@@ -156,16 +172,16 @@ func Inference(inputs *mat.Dense, w *mat.Dense, b *mat.Dense) (res mat.Dense) {
 	}, &res)
 	return res
 }
-func dCost(inputs, y *mat.Dense, p mat.Dense, alpha float64) (dw, db mat.Dense) {
+func dCost(x, y *mat.Dense, p mat.Dense, alpha float64) (dw, db mat.Dense) {
 	dw = *mat.NewDense(784, 10, nil)
 	db = *mat.NewDense(1, 10, nil)
 	sub := mat.NewDense(60000, 10, nil)
 	sub.Sub(&p, y)
 
-	dw.Mul(inputs.T(), sub) // 784 x 10
+	dw.Mul(x.T(), sub) // 784 x 10
 	dw.Scale(alpha/float64(60000), &dw)
 
-	b := make([]float64, 60000)
+	b := make([]float64, 60000) // to global
 	for i := 0; i < 60000; i++ {
 		b[i] = 1
 	}
@@ -176,7 +192,7 @@ func dCost(inputs, y *mat.Dense, p mat.Dense, alpha float64) (dw, db mat.Dense) 
 
 	return dw, db
 } // gradient shows direction to max
-func gradient(inputs, y *mat.Dense, w, b *mat.Dense, alpha float64, epochs int) (dw, db mat.Dense) {
+func gradientDescent(inputs, y *mat.Dense, w, b *mat.Dense, alpha float64, epochs int) (dw, db mat.Dense) {
 	for i := 0; i < epochs; i++ {
 		p := Inference(inputs, w, b)
 		dw, db = dCost(inputs, y, p, alpha)
@@ -189,14 +205,18 @@ func accuracy(inputs, y *mat.Dense, w, b *mat.Dense) float64 {
 	p := Inference(inputs, w, b)
 	var correct int
 	for i := 0; i < 10000; i++ {
-		var max, index float64
+		var index1, index2 int
 		for j := 0; j < 10; j++ {
-			if p.At(i, j) > max {
-				max = p.At(i, j)
-				index = float64(j)
+			if p.At(i, j) > p.At(i, index1) {
+				index1 = j
 			}
 		}
-		if y.At(i, 0) == index {
+		for j := 0; j < 10; j++ {
+			if y.At(i, j) > y.At(i, index2) {
+				index2 = j
+			}
+		}
+		if index1 == index2 {
 			correct++
 		}
 	}
