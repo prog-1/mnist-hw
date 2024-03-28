@@ -6,10 +6,12 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
+//     rows, columns
 // x = {n, size}
 // w = {size, digits}
 // b = {size, 1}
 // p = {n, digits}
+// y = {n, 1}//labels
 
 const (
 	epochs = 10000

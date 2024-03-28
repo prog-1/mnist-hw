@@ -19,7 +19,7 @@ const (
 )
 
 // Reads MNIST image data from a .gz file and returns x (input) matrix of {n, size}
-func readGZ(filename string) (x *mat.Dense) {
+func readImages(filename string) (x *mat.Dense) {
 
 	//Opening .gz file
 	file, err := os.Open(filename)
@@ -82,11 +82,61 @@ func readGZ(filename string) (x *mat.Dense) {
 	//fmt.Println("size:", size)
 	//fmt.Println("len pixels:", len(pixels))
 
+	//################################################
+
 	x = mat.NewDense(n, size, byteToFloat(pixels))
+
+	return x
+}
+
+// Reads label data from mnist .gz file and returns y (label) matrix of {n, digits}
+func readLabels(filename string) (y *mat.Dense) {
+
+	//Opening .gz file
+	file, err := os.Open(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	//Initializing reader
+	gzReader, err := gzip.NewReader(file)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer gzReader.Close()
 
 	//################################################
 
-	return x
+	//Parsing magic number
+	var magic uint32
+	if err := binary.Read(gzReader, binary.BigEndian, &magic); err != nil {
+		log.Fatal(err)
+	} else if magic != wantLabel {
+		fmt.Printf("invalid magic number %v", magic)
+		return
+	}
+
+	//Parsing label count
+	var lc uint32
+	if err := binary.Read(gzReader, binary.BigEndian, &lc); err != nil {
+		log.Fatal(err)
+	}
+
+	//################################################
+
+	// Parsing all image data into single slice of pixels
+	labels := make([]byte, lc) //slice, where for each image is 10 outputs of digit probability
+
+	if _, err := io.ReadFull(gzReader, labels); err != nil {
+		log.Fatal(err)
+	}
+
+	//################################################
+
+	y = mat.NewDense(int(lc), 1, byteToFloat(labels))
+
+	return y
 }
 
 // Printing one data set digit to the console

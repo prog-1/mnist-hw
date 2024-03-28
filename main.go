@@ -13,15 +13,19 @@ const digits = 10     //output count of the digits from 0 to 9
 
 func main() {
 
-	//######################## MNIST data read #########################
+	//################### MNIST data read ######################
 
-	//reading MNIST data set
-	//pixels := readGZ("data/train-images-idx3-ubyte.gz")
-	readGZ("data/train-images-idx3-ubyte.gz")
+	//x := readImages("data/train-images-idx3-ubyte.gz") //getting image matrix
+	//y := readLabels("data/train-labels-idx1-ubyte.gz") //getting label (right answer) matrix
 
+	//// ### Debug ###
 	//Printing one digit from data set
 	//i := 59999 //digit index (min - 0 | max - 59999)
 	//printMnist(pixels.RawMatrix().Data[i*size : (i+1)*size])
+
+	//################## Machine Learning ####################
+
+	//w, b := regression(x, y) //going through training process
 
 	//####################### Ebiten #########################
 
