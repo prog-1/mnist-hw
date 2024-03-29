@@ -42,7 +42,7 @@ func readMnistImageSet(r io.Reader) []byte {
 	return res
 }
 
-func readMnistLabels(r io.Reader) []byte {
+func readMnistLabels(r io.Reader) *mat.Dense {
 	var magicNumber uint32
 	err := binary.Read(r, binary.BigEndian, &magicNumber)
 	if err != nil {
@@ -61,13 +61,11 @@ func readMnistLabels(r io.Reader) []byte {
 	if n != len(res) {
 		log.Fatal("Length of data is not correct")
 	}
-	a := make([]byte, 0)
-	for _, v := range res {
-		tmp := make([]byte, 10)
-		tmp[v] = 1
-		a = append(a, tmp...)
+	a := make([]float64, lablesNum*10)
+	for i, v := range res {
+		a[i*10+int(v)] = 1
 	}
-	return a
+	return mat.NewDense(int(lablesNum), 10, a)
 }
 
 func DebugPrint(cols int, image []byte) {
@@ -85,7 +83,7 @@ func DebugPrint(cols int, image []byte) {
 	}
 }
 
-func GetTestAndTrainingSet() (TestSet *mat.Dense, TestLablesSet *mat.Dense, TrainSet *mat.Dense, TrainLablesSet *mat.Dense) {
+func TestAndTrainingSet() (TestSet *mat.Dense, TestLables *mat.Dense, TrainSet *mat.Dense, TrainLables *mat.Dense) {
 	file, err := os.Open("dataset/t10k-images.idx3-ubyte")
 	if err != nil {
 		log.Fatal(err)
@@ -98,8 +96,7 @@ func GetTestAndTrainingSet() (TestSet *mat.Dense, TestLablesSet *mat.Dense, Trai
 	}
 	// fmt.Println(len(TestImages)/784, len(bytesToFloat64Slice(TestImages)))
 	TestSet = mat.NewDense(len(TestImages)/784, 784, bytesToFloat64Slice(TestImages))
-	TestLables := readMnistLabels(file)
-	TestLablesSet = mat.NewDense(len(TestLables)/10, 10, bytesToFloat64Slice(TestLables))
+	TestLables = readMnistLabels(file)
 	file.Close()
 
 	file, err = os.Open("dataset/train-images.idx3-ubyte")
@@ -115,8 +112,7 @@ func GetTestAndTrainingSet() (TestSet *mat.Dense, TestLablesSet *mat.Dense, Trai
 	if err != nil {
 		log.Fatal(err)
 	}
-	TrainLables := readMnistLabels(file)
-	TrainLablesSet = mat.NewDense(len(TrainLables)/10, 10, bytesToFloat64Slice(TrainLables))
+	TrainLables = readMnistLabels(file)
 	file.Close()
 	return
 	// DebugPrint(28, images[28*28*9999:28*28*10000])

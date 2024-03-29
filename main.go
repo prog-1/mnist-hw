@@ -14,8 +14,7 @@ import (
 type Game struct {
 	lastX, lastY int
 	background   *ebiten.Image
-	trainSet     *mat.Dense
-	lables       *mat.Dense
+	m            *model
 }
 
 func (g *Game) Update() error {
@@ -26,15 +25,13 @@ func (g *Game) Update() error {
 			for j := 0; j < 28; j++ {
 				color := g.background.At(j, i)
 				_, _, _, a := color.RGBA()
-				inputs = append(inputs, float64(65535/255)*float64(a))
+				inputs = append(inputs, float64(a)/255)
 
 			}
 		}
 		VecInputs := mat.NewDense(1, 28*28, inputs)
 		fmt.Println(VecInputs)
-		m := NewModel(28, 28)
-		m.Train(g.trainSet, g.lables)
-		fmt.Println(m.Inference(VecInputs))
+		fmt.Println(g.m.Predict(VecInputs))
 	}
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		if g.lastX == -1 || g.lastY == -1 {
@@ -72,11 +69,14 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 func main() {
 	// m := NewModel()
 	// fmt.Println(m)
-	_, _, c, d := GetTestAndTrainingSet()
+	a, b, c, d := TestAndTrainingSet()
 	// fmt.Println(d)
+	m := NewModel(28, 28)
+	m.Train(c, d)
+	m.Accuracy(a,b)
 	ebiten.SetWindowSize(640, 480)
 	ebiten.SetWindowTitle("Hello, World!")
-	if err := ebiten.RunGame(&Game{-1, -1, ebiten.NewImage(28, 28), c, d}); err != nil {
+	if err := ebiten.RunGame(&Game{-1, -1, ebiten.NewImage(28, 28), m}); err != nil {
 		log.Fatal(err)
 	}
 }
