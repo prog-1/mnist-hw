@@ -16,15 +16,7 @@ const (
 
 func main() {
 	xTrain, yTrain := MnistImages("data/t10k-images.idx3-ubyte"), MnistLabels("data/t10k-labels.idx1-ubyte")
-	sink := func(epoch int, w, dw, b, db *mat.Dense) {
-		// TODO: Print accuracy
-		if epoch%10 == 0 {
-			fmt.Printf("Epoch: %v\n\n", epoch)
-			fmt.Printf("Derivatives:\nws = %v\nb = %v\n\n", dw, db)
-			fmt.Println()
-		}
-	}
-	_, _, err := train(epochCount, xTrain, yTrain, lrw, lrb, sink)
+	_, _, err := train(epochCount, xTrain, yTrain, lrw, lrb, nil)
 	if err != nil {
 		panic(err)
 	}
