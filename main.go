@@ -72,17 +72,12 @@ func main() {
 	MtrainLabels := toMatrix(trainLabels, 60000, 1)
 	w := mat.NewDense(784, 10, nil) // random weights todo
 	b := mat.NewDense(1, 10, nil)
-	var oneXtenSlice []float64
-	for i := 0; i < 10; i++ {
-		oneXtenSlice = append(oneXtenSlice, 1)
-	}
-	onexTen := mat.NewDense(1, 10, oneXtenSlice)
-	var moreYtrain, moreYtest mat.Dense
-	moreYtrain.Mul(MtrainLabels, onexTen)
-	moreYtest.Mul(Mlabels, onexTen)
-	dw, db := gradientDescent(MtrainImages, &moreYtrain, w, b, 0.1, 100) // two learning
-	fmt.Println(dw, db)
-	fmt.Println(accuracy(Mimages, &moreYtest, w, b))
+	alphaw, alphab := 1e-3, 0.01
+	betterYtrain, betterYtest := convert(MtrainLabels), convert(Mlabels)
+	//fmt.Println(mat.Formatted(&betterYtrain))
+	w, b = gradientDescent(MtrainImages, &betterYtrain, w, b, alphaw, alphab, 1000) // two learning
+	//fmt.Println(dw, db)
+	fmt.Println(accuracy(Mimages, &betterYtest, w, b))
 
 	var drawnImage []float64
 	for i := 0; i < 28; i++ {
@@ -97,8 +92,17 @@ func main() {
 	}
 	drawnImageMatrix := mat.NewDense(1, 784, drawnImage)
 	p := Inference(drawnImageMatrix, w, b)
+	//fmt.Println(mat.Formatted(drawnImageMatrix))
 	fmt.Println(mat.Formatted(&p))
 
+}
+func convert(y *mat.Dense) mat.Dense {
+	rows, _ := y.Dims()
+	b := make([]float64, rows*10)
+	for i := 0; i < rows; i++ {
+		b[i*10+int(y.At(i, 0))] = 1
+	}
+	return *mat.NewDense(rows, 10, b)
 }
 func toMatrix(images []byte, rows, columns int) *mat.Dense {
 	data := make([]float64, len(images))
@@ -172,34 +176,32 @@ func Inference(inputs *mat.Dense, w *mat.Dense, b *mat.Dense) (res mat.Dense) {
 	}, &res)
 	return res
 }
-func dCost(x, y *mat.Dense, p mat.Dense, alpha float64) (dw, db mat.Dense) {
+func dCost(x, y *mat.Dense, p mat.Dense, alphaw, alphab float64) (dw, db mat.Dense) {
 	dw = *mat.NewDense(784, 10, nil)
 	db = *mat.NewDense(1, 10, nil)
-	sub := mat.NewDense(60000, 10, nil)
+	sub := mat.NewDense(x.RawMatrix().Rows, 10, nil)
 	sub.Sub(&p, y)
 
 	dw.Mul(x.T(), sub) // 784 x 10
-	dw.Scale(alpha/float64(60000), &dw)
-
-	b := make([]float64, 60000) // to global
-	for i := 0; i < 60000; i++ {
+	dw.Scale(alphaw/float64(x.RawMatrix().Rows), &dw)
+	b := make([]float64, x.RawMatrix().Rows) // to global
+	for i := 0; i < x.RawMatrix().Rows; i++ {
 		b[i] = 1
 	}
-	a := mat.NewDense(1, 60000, b)
-
+	a := mat.NewDense(1, x.RawMatrix().Rows, b)
 	db.Mul(a, sub) //db 1 x 10
-	db.Scale(alpha/float64(60000), &db)
+	db.Scale(alphab/float64(x.RawMatrix().Rows), &db)
 
 	return dw, db
 } // gradient shows direction to max
-func gradientDescent(inputs, y *mat.Dense, w, b *mat.Dense, alpha float64, epochs int) (dw, db mat.Dense) {
+func gradientDescent(inputs, y *mat.Dense, w, b *mat.Dense, alphaw, alphab float64, epochs int) (*mat.Dense, *mat.Dense) {
 	for i := 0; i < epochs; i++ {
 		p := Inference(inputs, w, b)
-		dw, db = dCost(inputs, y, p, alpha)
+		dw, db := dCost(inputs, y, p, alphaw, alphab)
 		w.Sub(w, &dw)
 		b.Sub(b, &db)
 	}
-	return dw, db
+	return w, b
 }
 func accuracy(inputs, y *mat.Dense, w, b *mat.Dense) float64 {
 	p := Inference(inputs, w, b)
