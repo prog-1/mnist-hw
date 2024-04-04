@@ -117,25 +117,29 @@ func readLabels(filename string) (y *mat.Dense) {
 		return
 	}
 
-	//Parsing label count
-	var lc uint32
-	if err := binary.Read(gzReader, binary.BigEndian, &lc); err != nil {
+	//Parsing answer count
+	var ac uint32
+	if err := binary.Read(gzReader, binary.BigEndian, &ac); err != nil {
 		log.Fatal(err)
 	}
 
 	//################################################
 
-	// Parsing all image data into single slice of pixels
-	labels := make([]byte, lc) //slice, where for each image is 10 outputs of digit probability
-
-	if _, err := io.ReadFull(gzReader, labels); err != nil {
+	// Parsing answers
+	answers := make([]byte, ac)                               //slice of answers what digit is illustrated on each image
+	if _, err := io.ReadFull(gzReader, answers); err != nil { //reading all answers
 		log.Fatal(err)
 	}
 
 	//################################################
 
-	y = mat.NewDense(int(lc), 1, byteToFloat(labels))
+	y = mat.NewDense(n, outputs, make([]float64, n*outputs)) //creating y (label) matrix {n, outputs}
 
+	for i, a := range answers { //for each answer (or image count)
+		y.Set(i, int(a), 1) //setting value in row of our current image in column of the right answer to 1
+	}
+
+	//fmt.Println(mat.Formatted(y))
 	return y
 }
 
@@ -160,7 +164,7 @@ func printDigit(pixels []float64) {
 	fmt.Println(string(pb))
 }
 
-// Conversion of []byte into []float64
+// Conversion of []byte into []float64 (works fine 👌)
 func byteToFloat(bytes []byte) (floats []float64) {
 	floats = make([]float64, len(bytes))
 	for i, b := range bytes {

@@ -6,17 +6,21 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
-//     rows, columns
+//rows, columns
 // x = {n, size}
-// w = {size, digits}
-// b = {size, 1}
-// p = {n, digits}
-// y = {n, 1}//labels
+// w = {size, outputs}
+// b = {1, outputs}// matrix - column, but transplanated
+// p = {n, outputs}
+// y = {n, outputs} //labels
 
 const (
-	epochs = 10000
-	lrw    = 0.000001
-	lrb    = 5
+
+	//Epochs
+	epochs = 10
+
+	//Learning rates
+	lrw = 0.0001 //learning rate for weights
+	lrb = 0.5    //learning rate for bias
 )
 
 //####################################################################################################
@@ -27,28 +31,38 @@ const (
 func regression(x, y *mat.Dense) (w, b *mat.Dense) {
 
 	//Weight matrix
-	w = mat.NewDense(size, digits, make([]float64, size*digits)) //not sure about length of slice
+	w = mat.NewDense(size, outputs, make([]float64, size*outputs)) //declaring dense matrix {size,outputs} | not sure about length of slice
+	w.Apply(func(i, j int, v float64) float64 { return 1 }, w)     //making each element equal to 1
 
 	//Bias matrix
-	b = mat.NewDense(size, 1, make([]float64, size))
+	b = mat.NewDense(1, outputs, make([]float64, outputs))     //declaring dense matrix {1,outputs}
 	b.Apply(func(i, j int, v float64) float64 { return 1 }, b) //making each element equal to 1
 
 	//Training
 	for epoch := 1; epoch < epochs; epoch++ { // for each epoch
 		w, b = gradientDescent(x, y, w, b) // adjusting all coefficients
+
+		// if epoch % 100 = 1 {
+
+		// }
 	}
 
-	return w, b
+	return w, b //returning weight and bias matrices
 }
 
 // Adjusting coefficients
-func gradientDescent(x, y, w, b *mat.Dense) (*mat.Dense, *mat.Dense) {
+func gradientDescent(x, y, w, b *mat.Dense) (dw *mat.Dense, db *mat.Dense) {
 
 	p := inference(x, w, b) //getting current predictions
 
-	dw, db := gradients(x, y, p)                                       //getting current gradients
-	dw.Apply(func(i, j int, v float64) float64 { return v * lrw }, dw) //applying learning rate for w
-	db.Apply(func(i, j int, v float64) float64 { return v * lrb }, db) //applying learning rate for b
+	dw, db = gradients(x, y, p) //getting current gradients
+
+	//Applying learning rates
+	dw.Scale(lrw/float64(n), dw) //!!! need to divide lrw on batchsize or rows or on images or something !!!
+	dw.Scale(lrb/float64(n), dw) //!!! need to divide lrb on batchsize or rows or something !!!
+
+	//dw.Apply(func(i, j int, v float64) float64 { return v * lrw }, dw) //applying learning rate for w
+	//db.Apply(func(i, j int, v float64) float64 { return v * lrb }, db) //applying learning rate for b
 
 	w.Sub(w, dw) //subtracting gradient from w
 	b.Sub(b, db) //subtracting gradient from b
@@ -56,33 +70,37 @@ func gradientDescent(x, y, w, b *mat.Dense) (*mat.Dense, *mat.Dense) {
 	return w, b //returning adjusted coefficients
 }
 
+// Caclulating current gradients
 func gradients(x, y, p *mat.Dense) (dw, db *mat.Dense) {
 
-	var d *mat.Dense //deltas (errors)
-	d.Sub(p, y)
-	dw = d
+	//### Differences ###
+	d := mat.NewDense(n, outputs, make([]float64, n*outputs)) //differences (deltas) (errors) matrix {n, outputs}
+	d.Sub(p, y)                                               //subtracting labels from predictions to get differences
 
-	for image := 0; image < rows; image++ { //for each image
-		for pixel := 0; pixel < columns; pixel++ { //for each pixel
+	//### DW ###
+	dw = mat.NewDense(size, outputs, nil)
+	dw.Mul(x.T(), d) //from theory: dw = 2/n * Tx * d, where 2/n can be omitted, because it is a constant that does not influence a thing
 
-			dw.Apply(func(i, j int, v float64) float64 { return v + (float64(1/n) * v * x.At(image, pixel)) }, dw)
+	//### DB ###
+	db = mat.NewDense(1, outputs, nil)
 
-		}
+	ones := mat.NewDense(1, n, nil)
+	ones.Apply(func(i, j int, v float64) float64 { return 1 }, ones) //making each element equal to 1
 
-		db.Apply(func(i, j int, v float64) float64 { return v + (float64(1/n) * v) }, db)
-	}
+	db.Mul(ones, d) //need to multiply matrix of differences (d) on ones to sum all that we have in d
 
-	return dw, db
+	return dw, db //returning weight and bias coefficient matrices
 }
 
 //####################################################################################################
 
 // Prediction of y from w*x + b for all images
+// БЕРИ ДЛИННУ DIMS X
 func inference(x, w, b *mat.Dense) (p *mat.Dense) {
-	p.Mul(x, w)                                                   // w*x
-	p.Add(p, b)                                                   // + b
-	p.Apply(func(i, j int, v float64) float64 { return g(v) }, p) //applying sigmoid to each element
-	return p
+	p = &mat.Dense{}                                                           //constructing prection matrix of {n, outputs}
+	p.Mul(x, w)                                                                // w*x
+	p.Apply(func(i, j int, v float64) float64 { return g(v + b.At(0, j)) }, p) //adding bias andapplying sigmoid to each element
+	return p                                                                   //returning prediction matrix
 }
 
 // Sigmoid function

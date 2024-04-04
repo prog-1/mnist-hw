@@ -8,15 +8,15 @@ import (
 
 var rows, columns int //global variable of rows and columns of the canvas and the digit images
 var size int          //global variable of area of each image in pixels (28*28 = 784)
-var n int             //global variable of mnist image count
-const digits = 10     //output count of the digits from 0 to 9
+var n int             //global variable of mnist image count (60000)
+const outputs = 10    //output count of the digits from 0 to 9
 
 func main() {
 
 	//################### MNIST data read ######################
 
-	//x := readImages("data/train-images-idx3-ubyte.gz") //getting image matrix
-	//y := readLabels("data/train-labels-idx1-ubyte.gz") //getting label (right answer) matrix
+	x := readImages("data/train-images-idx3-ubyte.gz") //getting image matrix
+	y := readLabels("data/train-labels-idx1-ubyte.gz") //getting label (right answer) matrix
 
 	//// ### Debug ###
 	//Printing one digit from data set
@@ -25,7 +25,7 @@ func main() {
 
 	//################## Machine Learning ####################
 
-	//w, b := regression(x, y) //going through training process
+	w, b := regression(x, y) //going through training process
 
 	//####################### Ebiten #########################
 
@@ -34,7 +34,7 @@ func main() {
 	ebiten.SetWindowTitle("Digitopia")
 
 	//App instance
-	a := NewApp()
+	a := NewApp(w, b)
 
 	//Running app
 	if err := ebiten.RunGame(a); err != nil {
