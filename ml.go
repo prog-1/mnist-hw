@@ -8,6 +8,7 @@ import (
 
 const (
 	digitCount = 10
+	pixelCount = 784
 )
 
 func sigmoid(_, _ int, v float64) float64 {
@@ -18,6 +19,9 @@ func sigmoid(_, _ int, v float64) float64 {
 // Dimensions(rows x columns): pixels - N x 784, weights - 784 x 10, biases - 1 x 10, predictions - N x 10.
 // N - image count.
 func inference(pixels, weights, biases *mat.Dense) *mat.Dense {
+	if c := pixels.RawMatrix().Cols; c != pixelCount {
+		panic("pixels dims != N x 784")
+	}
 	var predictions mat.Dense
 	predictions.Mul(pixels, weights) // (N x 784) * (784 x 10) = (N x 10)
 	// predictions.Add(predictions, biases)// (N x 10) + (1 x 10) = panic
@@ -31,11 +35,29 @@ func inference(pixels, weights, biases *mat.Dense) *mat.Dense {
 // Converts original label/digit, into 10 element array of chances. Same size as prediciton.
 // Dimensions: original - 1 x N, converted - N x 10
 func convertLabels(original *mat.Dense) (converted *mat.Dense) {
-	_, N := original.Dims()
+	N := original.RawMatrix().Cols
 	converted = mat.NewDense(N, digitCount, nil)
 	for i := 0; i < N; i++ {
 		converted.Set(i, int(original.At(0, i)), 1)
 	}
+	return converted
+}
+
+// Converts 1 x 10 matrix of chances from 0 or 1 to a digit of the highest chance
+func convertPrediction(original *mat.Dense) (converted int) {
+	if r, c := original.Dims(); r != 1 || c != digitCount {
+		panic("prediction is not 1 x 10")
+	}
+
+	var maxChance float64
+	original.Apply(func(i, j int, v float64) float64 {
+		if v > maxChance {
+			converted = j
+			maxChance = v
+		}
+		return v
+	}, original)
+
 	return converted
 }
 

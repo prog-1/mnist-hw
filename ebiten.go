@@ -1,12 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+	"gonum.org/v1/gonum/mat"
 )
 
 const (
@@ -17,12 +20,16 @@ const (
 )
 
 type App struct {
+	W, B                   *mat.Dense // Weights and biases
+	guess                  string     // Digit that model thinks is currently drawn
 	mousePrevX, mousePrevY int
 	screenBuffer           *ebiten.Image
 }
 
-func NewGame() *App {
+func NewGame(w, b *mat.Dense) *App {
 	return &App{
+		w, b,
+		" ",
 		-1, -1,
 		ebiten.NewImage(screenWidth, screenHeight),
 	}
@@ -31,8 +38,9 @@ func NewGame() *App {
 func (a *App) Layout(outWidth, outHeight int) (w, h int) { return colCount, rowCount }
 func (a *App) Update() error {
 	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
-		ClearConsole()
-		printImage(rowCount, colCount, a.pixelAlphas())
+		alphas := a.pixelAlphas()
+		fmt.Println(alphas.Dims())
+		a.guess = fmt.Sprint(convertPrediction(inference(alphas, a.W, a.B)))
 	} else if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		a.handleDrawing()
 	} else if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
@@ -46,6 +54,7 @@ func (a *App) Update() error {
 
 func (a *App) Draw(screen *ebiten.Image) {
 	screen.DrawImage(a.screenBuffer, &ebiten.DrawImageOptions{})
+	ebitenutil.DebugPrint(screen, a.guess)
 }
 
 func (a *App) updateMousePrevCoord() {
@@ -67,8 +76,8 @@ func (a *App) handleDrawing() {
 	}
 }
 
-// Returns alpha values of logical pixels on the screen.
-func (a *App) pixelAlphas() []byte {
+// Returns alpha values of logical pixels on the screen. Dims: 1 x 784
+func (a *App) pixelAlphas() *mat.Dense {
 	alphas := make([]byte, rowCount*colCount)
 	for r := 0; r < rowCount; r++ {
 		for c := 0; c < colCount; c++ {
@@ -76,14 +85,14 @@ func (a *App) pixelAlphas() []byte {
 			alphas[r*colCount+c] = a.screenBuffer.At(c, r).(color.RGBA).A
 		}
 	}
-	return alphas
+	return bytesToMat(1, pixelCount, alphas)
 }
 
 // Initialises app and runs main loop that handles drawing on screen.
-func RunDrawing() {
+func RunDrawing(w, b *mat.Dense) {
 	ebiten.SetWindowSize(screenWidth, screenHeight)
 	ebiten.SetWindowTitle(title)
-	if err := ebiten.RunGame(NewGame()); err != nil {
+	if err := ebiten.RunGame(NewGame(w, b)); err != nil {
 		log.Fatal(err)
 	}
 }

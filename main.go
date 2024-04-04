@@ -21,6 +21,7 @@ func main() {
 		panic(err)
 	}
 	fmt.Println(accuracy(xTest, yTest, w, b))
+	RunDrawing(w, b)
 }
 
 func ClearConsole() {
