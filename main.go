@@ -15,7 +15,7 @@ const (
 )
 
 func main() {
-	xTrain, yTrain := ReadMnistDB("data/t10k-images.idx3-ubyte"), ReadMnistDB("data/t10k-labels.idx1-ubyte")
+	xTrain, yTrain := MnistImages("data/t10k-images.idx3-ubyte"), MnistLabels("data/t10k-labels.idx1-ubyte")
 	sink := func(epoch int, w, dw, b, db *mat.Dense) {
 		// TODO: Print accuracy
 		if epoch%10 == 0 {
@@ -24,7 +24,7 @@ func main() {
 			fmt.Println()
 		}
 	}
-	_, _, err := train(epochCount, xTrain.Pixels, yTrain.Pixels, lrw, lrb, sink)
+	_, _, err := train(epochCount, xTrain, yTrain, lrw, lrb, sink)
 	if err != nil {
 		panic(err)
 	}
@@ -45,15 +45,28 @@ func ClearConsole() {
 	cmd.Run()
 }
 
-func ReadMnistDB(path string) *mnistImages {
+func MnistImages(path string) *mat.Dense {
 	f, err1 := os.Open(path)
 	if err1 != nil {
 		panic(fmt.Sprintf("failed to open file %q: %q", path, err1))
 	}
 	defer f.Close()
-	m, err2 := ReadMnistImages(f)
+	images, err2 := ReadMnistImages(f)
 	if err2 != nil {
 		panic(fmt.Sprintf("failed to read file %q: %q", path, err2))
 	}
-	return m
+	return images.Pixels
+}
+
+func MnistLabels(path string) *mat.Dense {
+	f, err1 := os.Open(path)
+	if err1 != nil {
+		panic(fmt.Sprintf("failed to open file %q: %q", path, err1))
+	}
+	defer f.Close()
+	images, err2 := ReadMnistLabels(f)
+	if err2 != nil {
+		panic(fmt.Sprintf("failed to read file %q: %q", path, err2))
+	}
+	return images.Labels
 }

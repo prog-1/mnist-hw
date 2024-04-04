@@ -37,9 +37,7 @@ func ReadMnistImages(r io.Reader) (*mnistImages, error) {
 	if err := binary.Read(r, binary.BigEndian, &magic); err != nil {
 		return nil, fmt.Errorf("failed to read magic number: %v", err)
 	}
-	// text 0081 // label // last bit is dimesnion = 1
-	// image 0083 // image
-	if magic != 0x803 { // image
+	if magic != 0x803 { // images
 		return nil, fmt.Errorf("magic number is not for images: %x", magic)
 	}
 	if err := binary.Read(r, binary.BigEndian, &count); err != nil {
@@ -70,7 +68,7 @@ func ReadMnistLabels(r io.Reader) (*mnistLabels, error) {
 	if err := binary.Read(r, binary.BigEndian, &magic); err != nil {
 		return nil, fmt.Errorf("failed to read magic number: %v", err)
 	}
-	if magic != 0x801 { // label
+	if magic != 0x801 { // labels
 		return nil, fmt.Errorf("magic number is not for labels: %x", magic)
 	}
 	if err := binary.Read(r, binary.BigEndian, &count); err != nil {
@@ -86,7 +84,6 @@ func ReadMnistLabels(r io.Reader) (*mnistLabels, error) {
 		panic(fmt.Sprintf("read %d bytes; want %d", n, len(labels)))
 	}
 	return &mnistLabels{count, bytesToMat(1, count, labels)}, nil
-
 }
 
 func bytesToMat(rowCount, colCount uint32, input []byte) *mat.Dense {
