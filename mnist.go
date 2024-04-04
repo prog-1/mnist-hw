@@ -4,7 +4,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"os"
+
+	"gonum.org/v1/gonum/mat"
 )
 
 // MNIST Format
@@ -22,53 +23,78 @@ import (
 type mnistImages struct {
 	Count      uint32
 	Rows, Cols uint32
-	Pixels     []byte
+	Pixels     *mat.Dense // Rows x Cols
 }
 
-func ReadMnistImages(r io.Reader) *mnistImages {
-	var magic, imgCount, rows, cols uint32
+type mnistLabels struct {
+	Count  uint32
+	Labels *mat.Dense
+}
+
+// TODO: Combine 2 Read functions into 1
+func ReadMnistImages(r io.Reader) (*mnistImages, error) {
+	var magic, count, rows, cols uint32
 	if err := binary.Read(r, binary.BigEndian, &magic); err != nil {
-		fmt.Errorf("failed to read magic number: %v", err)
+		return nil, fmt.Errorf("failed to read magic number: %v", err)
 	}
 	// text 0081 // label // last bit is dimesnion = 1
 	// image 0083 // image
 	if magic != 0x803 { // image
-		fmt.Errorf("Magic number is not for images: %x", magic)
+		return nil, fmt.Errorf("magic number is not for images: %x", magic)
 	}
-	if err := binary.Read(r, binary.BigEndian, &imgCount); err != nil {
-		fmt.Errorf("failed to read image count: %v", err)
+	if err := binary.Read(r, binary.BigEndian, &count); err != nil {
+		return nil, fmt.Errorf("failed to read image count: %v", err)
 	}
 	if err := binary.Read(r, binary.BigEndian, &rows); err != nil {
-		fmt.Errorf("failed to read row count: %v", err)
+		return nil, fmt.Errorf("failed to read row count: %v", err)
 	}
 	if err := binary.Read(r, binary.BigEndian, &cols); err != nil {
-		fmt.Errorf("failed to read column count: %v", err)
+		return nil, fmt.Errorf("failed to read column count: %v", err)
 	}
 
-	pixels := make([]byte, imgCount*rows*cols)
+	// pixels := mat.NewDense(imageCount, rows*cols, nil)
+	pixels := make([]byte, count*rows*cols)
 	n, err := io.ReadFull(r, pixels) // n - number of bytes
 	if err != nil {
-		fmt.Errorf("failed to read images: %v", err)
+		panic(fmt.Sprintf("failed to read images: %v", err))
 	}
 	if n != len(pixels) {
-		fmt.Errorf("read %d bytes; want %d", n, len(pixels))
+		panic(fmt.Sprintf("read %d bytes; want %d", n, len(pixels)))
 	}
 
-	return &mnistImages{imgCount, rows, cols, pixels}
+	return &mnistImages{count, rows, cols, bytesToMat(count, rows*cols, pixels)}, nil
 }
 
-func ReadMnistDB(path string) (*mnistImages, error) {
-	f, err := os.Open(path)
+func ReadMnistLabels(r io.Reader) (*mnistLabels, error) {
+	var magic, count uint32
+	if err := binary.Read(r, binary.BigEndian, &magic); err != nil {
+		return nil, fmt.Errorf("failed to read magic number: %v", err)
+	}
+	if magic != 0x801 { // label
+		return nil, fmt.Errorf("magic number is not for labels: %x", magic)
+	}
+	if err := binary.Read(r, binary.BigEndian, &count); err != nil {
+		return nil, fmt.Errorf("failed to read image count: %v", err)
+	}
+
+	labels := make([]byte, count)
+	n, err := io.ReadFull(r, labels)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open file %q", path)
+		panic(fmt.Sprintf("failed to read labels: %v", err))
 	}
-	defer f.Close()
-	return ReadMnistImages(f), nil
+	if n != len(labels) {
+		panic(fmt.Sprintf("read %d bytes; want %d", n, len(labels)))
+	}
+	return &mnistLabels{count, bytesToMat(1, count, labels)}, nil
+
 }
 
-// Returns bytes resposnible for the image with the index given
-func (m mnistImages) imageBytes(i uint32) []byte {
-	return m.Pixels[i*m.Rows*m.Cols : (i+1)*m.Rows*m.Cols]
+func bytesToMat(rowCount, colCount uint32, input []byte) *mat.Dense {
+	output := make([]float64, len(input))
+	for i, x := range input {
+		output[i] = float64(x)
+	}
+	return mat.NewDense(int(rowCount), int(colCount), output)
 }
 
 func printImage(rowCount, colCount uint32, pixels []byte) {
