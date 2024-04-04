@@ -24,6 +24,7 @@ const (
 type game struct {
 	newDimension *ebiten.Image
 	x, y         int
+	w, b         *mat.Dense
 }
 
 func (g *game) Layout(outWidth, outHeight int) (w, h int) { return 28, 28 }
@@ -38,17 +39,33 @@ func (g *game) Update() error {
 		g.x, g.y = x, y
 	}
 	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
+		var drawnImage []float64
 		for i := 0; i < 28; i++ {
 			for j := 0; j < 28; j++ {
 				a, _, _, _ := g.newDimension.At(j, i).RGBA()
 				if a > 0 {
 					fmt.Print("#")
+					drawnImage = append(drawnImage, 1)
 				} else {
 					fmt.Print(" ")
+					drawnImage = append(drawnImage, 0)
 				}
 			}
 			fmt.Println()
 		}
+		drawnImageMatrix := mat.NewDense(1, 784, drawnImage)
+		p := Inference(drawnImageMatrix, g.w, g.b)
+		fmt.Println(mat.Formatted(&p))
+		var ans []int
+		for i := 0; i < 10; i++ {
+			if p.At(0, i) > 0.5 {
+				ans = append(ans, i)
+			}
+		}
+		fmt.Println(ans)
+	}
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
+		g.newDimension.Clear()
 	}
 	return nil
 }
@@ -56,12 +73,8 @@ func (g *game) Draw(screen *ebiten.Image) {
 	screen.DrawImage(g.newDimension, nil)
 }
 
-func main() {
+func main() { // softmax
 	ebiten.SetWindowSize(screenWidth, screenHeight)
-	g := &game{ebiten.NewImage(28, 28), 0, 0}
-	if err := ebiten.RunGame(g); err != nil {
-		log.Fatal(err)
-	}
 	images := ReadImages("t10k-images.idx3-ubyte")
 	labels := ReadLabels("t10k-labels.idx1-ubyte")
 	trainImages := ReadImages("train-images.idx3-ubyte")
@@ -75,26 +88,29 @@ func main() {
 	alphaw, alphab := 1e-3, 0.01
 	betterYtrain, betterYtest := convert(MtrainLabels), convert(Mlabels)
 	//fmt.Println(mat.Formatted(&betterYtrain))
-	w, b = gradientDescent(MtrainImages, &betterYtrain, w, b, alphaw, alphab, 1000) // two learning
+	w, b = gradientDescent(MtrainImages, &betterYtrain, w, b, alphaw, alphab, 100) // two learning
 	//fmt.Println(dw, db)
 	fmt.Println(accuracy(Mimages, &betterYtest, w, b))
 
-	var drawnImage []float64
-	for i := 0; i < 28; i++ {
-		for j := 0; j < 28; j++ {
-			_, _, _, a := g.newDimension.At(j, i).RGBA()
-			if a > 0 {
-				drawnImage = append(drawnImage, 1)
-			} else {
-				drawnImage = append(drawnImage, 0)
-			}
-		}
+	// var drawnImage []float64
+	// for i := 0; i < 28; i++ {
+	// 	for j := 0; j < 28; j++ {
+	// 		_, _, _, a := g.newDimension.At(j, i).RGBA()
+	// 		if a > 0 {
+	// 			drawnImage = append(drawnImage, 1)
+	// 		} else {
+	// 			drawnImage = append(drawnImage, 0)
+	// 		}
+	// 	}
+	// }
+	// drawnImageMatrix := mat.NewDense(1, 784, drawnImage)
+	// p := Inference(drawnImageMatrix, w, b)
+	// //fmt.Println(mat.Formatted(drawnImageMatrix))
+	// fmt.Println(mat.Formatted(&p))
+	g := &game{ebiten.NewImage(28, 28), 0, 0, w, b}
+	if err := ebiten.RunGame(g); err != nil {
+		log.Fatal(err)
 	}
-	drawnImageMatrix := mat.NewDense(1, 784, drawnImage)
-	p := Inference(drawnImageMatrix, w, b)
-	//fmt.Println(mat.Formatted(drawnImageMatrix))
-	fmt.Println(mat.Formatted(&p))
-
 }
 func convert(y *mat.Dense) mat.Dense {
 	rows, _ := y.Dims()
