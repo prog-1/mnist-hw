@@ -42,7 +42,8 @@ func convertLabels(original *mat.Dense) (converted *mat.Dense) {
 // Returns gradient of the loss function, i.e. derivatives of all the weights and biases.
 // Dimensions(rows x columns): pixels - N x 784, labels - N x 10, predictions - N x 10, dw - 784 x 10, db - 1 x 10
 func dCost(pixels, labels, predictions *mat.Dense) (dw, db *mat.Dense) {
-	dw, db = mat.NewDense(784, digitCount, nil), mat.NewDense(1, digitCount, nil)
+	_, pixelCount := pixels.Dims()
+	dw, db = mat.NewDense(pixelCount, digitCount, nil), mat.NewDense(1, digitCount, nil)
 	// RowCount, ColCount := pixels.Dims()
 	imageCount, _ := pixels.Dims()
 	diff := mat.NewDense(imageCount, digitCount, nil)
@@ -78,7 +79,38 @@ func train(epochCount int, pixels, labels *mat.Dense, lrw, lrb float64,
 		dw.Scale(lrw, dw)
 		w.Sub(w, dw)
 
-		sink(epoch, w, dw, b, db)
+		if sink != nil {
+			sink(epoch, w, dw, b, db)
+		}
 	}
 	return w, b, nil
+}
+
+// xTest - N x 784, yTest - N x 1, w = 784 x 10, b - 1 x 10,
+func accuracy(xTest, yTest, w, b *mat.Dense) float64 {
+	predictions := inference(xTest, w, b)   // N x 10
+	convertedLabels := convertLabels(yTest) // N x 10
+
+	// Converting predicitons into matrix with 1 and 0:
+	predictions.Apply(func(i, j int, v float64) float64 {
+		if predictions.At(i, j) > 0.5 {
+			return 1
+		} else {
+			return 0
+		}
+	}, predictions)
+
+	var correctCount float64
+	equal := func(a, b, epsilon float64) bool {
+		return math.Abs(a-b) < epsilon
+	}
+	r, c := predictions.Dims()
+	for i := 0; i < r; i++ {
+		for j := 0; j < c; j++ {
+			if equal(predictions.At(i, j), convertedLabels.At(i, j), 1e-10) {
+				correctCount++
+			}
+		}
+	}
+	return float64(r) / correctCount
 }

@@ -15,11 +15,12 @@ const (
 )
 
 func main() {
-	xTrain, yTrain := MnistImages("data/t10k-images.idx3-ubyte"), MnistLabels("data/t10k-labels.idx1-ubyte")
-	_, _, err := train(epochCount, xTrain, yTrain, lrw, lrb, nil)
+	xTrain, yTrain, xTest, yTest := MnistImages("data/t10k-images.idx3-ubyte"), MnistLabels("data/t10k-labels.idx1-ubyte"), MnistImages("data/train-images.idx3-ubyte"), MnistLabels("data/train-labels.idx1-ubyte")
+	w, b, err := train(epochCount, xTrain, yTrain, lrw, lrb, nil)
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println(accuracy(xTest, yTest, w, b))
 }
 
 func ClearConsole() {
