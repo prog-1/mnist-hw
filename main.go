@@ -140,7 +140,7 @@ func main() {
 	w, b := mat.NewDense(784, 10, nil), mat.NewDense(1, 10, nil)
 	go func() {
 		epochs := int(1e2)
-		lrW, lrB := 1e-4, 1e-2
+		lrW, lrB := 1e-5, 1e0
 		for i := 0; i <= epochs; i++ {
 			y := inference(inputsTrain, w, b)
 			dw, db := dCost(inputsTrain, labelsTrain, y, lrW, lrB)
