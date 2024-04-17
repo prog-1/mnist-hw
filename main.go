@@ -16,7 +16,7 @@ import (
 type Game struct {
 	screen       *ebiten.Image
 	prevX, prevY int
-	w, b         *mat.Dense
+	w, b, w2, b2 *mat.Dense
 }
 
 func (g *Game) Update() error {
@@ -46,7 +46,7 @@ func (g *Game) Update() error {
 			}
 			fmt.Println()
 		}
-		fmt.Println(predict(inputs, g.w, g.b))
+		fmt.Println(predict(inputs, g.w, g.b, g.w2, g.b2))
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyEscape) {
 		os.Exit(0)
@@ -66,13 +66,30 @@ func sigmoid(z float64) float64 {
 	return 1 / (1 + math.Exp(-z))
 }
 
-func inference(inputs, w, b *mat.Dense) *mat.Dense {
-	var res mat.Dense
-	res.Mul(inputs, w)
-	res.Apply(func(_, j int, v float64) float64 {
+func softmax(z, s float64) float64 {
+	return math.Exp(z) / s
+}
+
+func inference(inputs, w, b, w2, b2 *mat.Dense) *mat.Dense {
+	var y mat.Dense
+	y.Mul(inputs, w)
+	y.Apply(func(_, j int, v float64) float64 {
 		return sigmoid(v + b.At(0, j))
-	}, &res)
-	return &res
+	}, &y)
+	var z mat.Dense
+	z.Mul(&y, w2)
+	z.Apply(func(_, j int, v float64) float64 {
+		return v + b2.At(0, j)
+	}, &z)
+	var s float64
+	_, c := z.Dims()
+	for i := 0; i < c; i++ {
+		s += math.Exp(z.At(0, i))
+	}
+	z.Apply(func(_, j int, v float64) float64 {
+		return softmax(v, s)
+	}, &z)
+	return &z
 }
 
 func dCost(inputs, y, p *mat.Dense, lrW, lrB float64) (dw, db *mat.Dense) {
@@ -96,10 +113,10 @@ func dCost(inputs, y, p *mat.Dense, lrW, lrB float64) (dw, db *mat.Dense) {
 	return
 }
 
-func accuracy(inputs, y []float64, w, b *mat.Dense) float64 {
+func accuracy(inputs, y []float64, w, b, w2, b2 *mat.Dense) float64 {
 	var res float64
 	for i := 0; i < len(y); i++ {
-		n := predict(inputs[i*784:(i+1)*784], w, b)
+		n := predict(inputs[i*784:(i+1)*784], w, b, w2, b2)
 		if int(y[i]) == n {
 			res++
 		}
@@ -107,9 +124,9 @@ func accuracy(inputs, y []float64, w, b *mat.Dense) float64 {
 	return res / float64(len(y)) * 100
 }
 
-func predict(inputs []float64, w, b *mat.Dense) int {
+func predict(inputs []float64, w, b, w2, b2 *mat.Dense) int {
 	x := mat.NewDense(1, 784, inputs)
-	pred := inference(x, w, b)
+	pred := inference(x, w, b, w2, b2)
 	var num int
 	var numP float64
 	for i := 0; i < 10; i++ {
@@ -138,21 +155,22 @@ func main() {
 	}
 	inputsTrain, labelsTrain := mat.NewDense(60000, 784, xTrain), mat.NewDense(len(yTrain), 1, yTrain)
 	w, b := mat.NewDense(784, 10, nil), mat.NewDense(1, 10, nil)
+	w2, b2 := mat.NewDense(784, 10, nil), mat.NewDense(1, 10, nil)
 	go func() {
 		epochs := int(1e2)
 		lrW, lrB := 1e-5, 1e0
 		for i := 0; i <= epochs; i++ {
-			y := inference(inputsTrain, w, b)
+			y := inference(inputsTrain, w, b, w2, b2)
 			dw, db := dCost(inputsTrain, labelsTrain, y, lrW, lrB)
 			w.Sub(w, dw)
 			b.Sub(b, db)
 			fmt.Printf(`Epoch: %d
 			Accuracy: %.2f
-			`, i, accuracy(xTest, yTest, w, b))
+			`, i, accuracy(xTest, yTest, w, b, w2, b2))
 		}
 	}()
 	ebiten.SetWindowSize(960, 720)
-	if err := ebiten.RunGame(&Game{ebiten.NewImage(28, 28), -1, -1, w, b}); err != nil {
+	if err := ebiten.RunGame(&Game{ebiten.NewImage(28, 28), -1, -1, w, b, w2, b2}); err != nil {
 		log.Fatal(err)
 	}
 }
