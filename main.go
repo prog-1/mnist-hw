@@ -191,17 +191,11 @@ func Inference2(inputs *mat.Dense, w *mat.Dense, b *mat.Dense) (t2, z mat.Dense)
 		return v + b.At(0, j)
 	}, &t2)
 	z = t2
-	z.Apply(func(i, j int, v float64) float64 {
-		return Softmax(v)
-	}, &z)
+	z = Softmax(&z)
 	return t2, z
 }
-func Softmax(z float64) float64 {
-	a := 0.0
-	for i := 0; i < 10; i++ {
-		a += math.Exp(z)
-	}
-	return math.Exp(z) / a
+func Softmax(z *mat.Dense) mat.Dense {
+	//????????????
 }
 
 func dCost(x, y, w2 *mat.Dense, h1, z mat.Dense, alphaw, alphab float64) (err, derrdw2, derrdb2, derrdw1, derrdb1 mat.Dense) {
