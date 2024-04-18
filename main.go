@@ -53,10 +53,14 @@ func (g *game) Update() error {
 			}
 			fmt.Println()
 		}
+
 		drawnImageMatrix := mat.NewDense(1, 784, drawnImage)
 		_, p := Inference(drawnImageMatrix, g.w, g.b)
-		_, p2 := Inference2(&p, g.w, g.b)
 		fmt.Println(mat.Formatted(&p))
+		_, p2 := Inference2(&p, g.w, g.b)
+		r, c := p2.Dims()
+		fmt.Println(r, c)
+		fmt.Println(mat.Formatted(&p2))
 		var ans []int
 		for i := 0; i < 10; i++ {
 			if p2.At(0, i) > 0.5 {
@@ -85,13 +89,13 @@ func main() { // softmax
 	MtrainImages := toMatrix(trainImages, 60000, 784)
 	MtrainLabels := toMatrix(trainLabels, 60000, 1)
 	w := mat.NewDense(784, 10, nil) // random weights todo
-	b := mat.NewDense(1, 10, nil)
+	b := mat.NewDense(60000, 10, nil)
 	w2 := mat.NewDense(10, 10, nil)
-	b2 := mat.NewDense(1, 10, nil)
+	b2 := mat.NewDense(60000, 10, nil)
 	alphaw, alphab := 1e-3, 0.01
 	betterYtrain, betterYtest := convert(MtrainLabels), convert(Mlabels)
 	//fmt.Println(mat.Formatted(&betterYtrain))
-	w, b = gradientDescent(MtrainImages, &betterYtrain, w, b, w2, b2, alphaw, alphab, 100) // two learning
+	w, b = gradientDescent(MtrainImages, &betterYtrain, w, b, w2, b2, alphaw, alphab, 10) // two learning
 	//fmt.Println(dw, db)
 	fmt.Println(accuracy(Mimages, &betterYtest, w, b))
 
@@ -181,24 +185,31 @@ func Inference(inputs *mat.Dense, w *mat.Dense, b *mat.Dense) (t1, h1 mat.Dense)
 	h1 = t1
 	h1.Apply(func(i, j int, v float64) float64 {
 		return Sigmoid(v)
-	}, &h1)
+	}, &h1) // h1  - 60000 x 10
 	return t1, h1
 }
-func Inference2(inputs *mat.Dense, w *mat.Dense, b *mat.Dense) (t2, z mat.Dense) {
-	t2 = mat.Dense{}
-	t2.Mul(inputs, w)
+func Inference2(h1 *mat.Dense, w *mat.Dense, b *mat.Dense) (t2, z mat.Dense) {
+	t2 = mat.Dense{} // 1 x 10
+	t2.Mul(h1, w)
 	t2.Apply(func(i, j int, v float64) float64 {
 		return v + b.At(0, j)
 	}, &t2)
-	z = t2
-	z = Softmax(&z)
+	z = Softmax(&t2)
 	return t2, z
 }
-func Softmax(z *mat.Dense) mat.Dense {
-	//????????????
+func Softmax(t2 *mat.Dense) mat.Dense {
+	var z mat.Dense
+	z.Apply(func(i, j int, v float64) float64 {
+		var sum float64
+		for k := 0; k < 10; k++ {
+			sum += math.Exp(t2.At(i, k))
+		}
+		return math.Exp(v) / sum
+	}, t2)
+	return z
 }
 
-func dCost(x, y, w2 *mat.Dense, h1, z mat.Dense, alphaw, alphab float64) (err, derrdw2, derrdb2, derrdw1, derrdb1 mat.Dense) {
+func dCost(x, y, w2 *mat.Dense, h1, z mat.Dense, alphaw, alphab float64) (derrdw2, derrdb2, derrdw1, derrdb1 mat.Dense) {
 	// dw = *mat.NewDense(784, 10, nil)
 	// db = *mat.NewDense(1, 10, nil)
 	// sub := mat.NewDense(x.RawMatrix().Rows, 10, nil)
@@ -214,48 +225,62 @@ func dCost(x, y, w2 *mat.Dense, h1, z mat.Dense, alphaw, alphab float64) (err, d
 	// db.Mul(a, sub) //db 1 x 10
 	// db.Scale(alphab/float64(x.RawMatrix().Rows), &db)
 
-	err = CrossEntropy(z, y)
-	var derrdt2 mat.Dense
-	derrdt2.Sub(&z, y)
-	derrdw2.Mul(h1.T(), &derrdt2)
+	//err = CrossEntropy(z, y)
+	var derrdt2 mat.Dense //
+	derrdt2.Sub(&z, y)    // [60000 x 10] - [60000 x 10]
+	//fmt.Println(mat.Formatted(&derrdt2))
+	derrdw2.Mul(h1.T(), &derrdt2) // [10 x 60000] * [60000 x 10] = [10 x 10]
+
 	derrdw2.Scale(alphaw/float64(x.RawMatrix().Rows), &derrdw2)
-	derrdb2 = derrdt2
+	derrdb2 = derrdt2 // [60000 x 10]
 	derrdb2.Scale(alphab/float64(x.RawMatrix().Rows), &derrdb2)
 
 	var derrdh1 mat.Dense
-	derrdh1.Mul(&derrdt2, w2.T())
+	derrdh1.Mul(&derrdt2, w2.T()) // [60000 x 10] * [10 x 10] = [60000 x 10]
 	var derrdt1 mat.Dense
 	var derivativeSigmoid = func(i, j int, v float64) float64 {
 		return v * (1 - v)
 	}
 	var derivative1 mat.Dense
 	derivative1.Apply(derivativeSigmoid, &h1)
-	derrdt1.MulElem(&derrdh1, &derivative1) // ?????
+	derrdt1.MulElem(&derrdh1, &derivative1) // [60000 * 10] .* [60000 * 10] = [60000 * 10]
 
-	derrdw1.Mul(x.T(), &derrdt1)
+	derrdw1.Mul(x.T(), &derrdt1) // [784 x 60000] * [60000 x 10] = [784 x 10]
 	derrdw1.Scale(alphaw/float64(x.RawMatrix().Rows), &derrdw1)
-	derrdb1 = derrdt1
+	derrdb1 = derrdt1 // [60000 x 10]
 	derrdb1.Scale(alphab/float64(x.RawMatrix().Rows), &derrdb1)
 
-	return err, derrdw2, derrdb2, derrdw1, derrdb1
+	return derrdw2, derrdb2, derrdw1, derrdb1
 } // gradient shows direction to max
 func CrossEntropy(z mat.Dense, y *mat.Dense) mat.Dense {
 	var err mat.Dense
-	err.Apply(func(i, j int, v float64) float64 {
-		return -y.At(i, j) * math.Log(z.At(i, j))
-	}, &z)
+	for i := 0; i < z.RawMatrix().Rows; i++ {
+		for j := 0; j < z.RawMatrix().Cols; j++ {
+			err.Set(i, j, -y.At(i, j)*math.Log(z.At(i, j)))
+		}
+	}
 	return err
 }
 
 func gradientDescent(inputs, y *mat.Dense, w, b, w2, b2 *mat.Dense, alphaw, alphab float64, epochs int) (*mat.Dense, *mat.Dense) {
 	for i := 0; i < epochs; i++ {
 		_, h1 := Inference(inputs, w, b)
+		//r, c := h1.Dims()
+		//fmt.Println(mat.Formatted(&h1), r, c)
 		_, z := Inference2(&h1, w2, b2)
-		_, derrdw2, derrdb2, derrdw1, derrdb1 := dCost(inputs, y, w2, h1, z, alphaw, alphab)
-		w2.Sub(w2, &derrdw2) //????????????????????????????
-		b2.Sub(b2, &derrdb2)
-		w.Sub(w, &derrdw1)
+		//r, c = z.Dims()
+		//fmt.Println(mat.Formatted(&z), r, c)
+		derrdw2, derrdb2, derrdw1, derrdb1 := dCost(inputs, y, w2, h1, z, alphaw, alphab)
+
+		w2.Sub(w2, &derrdw2) // [10  * 10] - [10 * 10]
+		//fmt.Println(mat.Formatted(&derrdw2))
+		b2.Sub(b2, &derrdb2) // [60000 * 10] - [60000 * 10]
+		//fmt.Println(mat.Formatted(&derrdb2))
+		w.Sub(w, &derrdw1) //784 * 10 - 784 * 10
+		//fmt.Println(mat.Formatted(&derrdw1))
 		b.Sub(b, &derrdb1)
+		//r, c := b.Dims()
+		//fmt.Println(r, c)
 		// w.Sub(w, &dw)
 		// b.Sub(b, &db)
 	}
