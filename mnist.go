@@ -18,8 +18,8 @@ const (
 	wantLabel = 0x00000801
 )
 
-// Reads MNIST image data from a .gz file and returns x (input) matrix of {n, size}
-func readImages(filename string) (x *mat.Dense) {
+// Reads MNIST image data from a .gz file and returns x (input) matrix of {n, size} and n - image count
+func readImages(filename string) (x *mat.Dense, n int) {
 
 	//Opening .gz file
 	file, err := os.Open(filename)
@@ -86,11 +86,11 @@ func readImages(filename string) (x *mat.Dense) {
 
 	x = mat.NewDense(n, size, byteToFloat(pixels))
 
-	return x
+	return x, n
 }
 
 // Reads label data from mnist .gz file and returns y (label) matrix of {n, digits}
-func readLabels(filename string) (y *mat.Dense) {
+func readLabels(n int, filename string) (y *mat.Dense) {
 
 	//Opening .gz file
 	file, err := os.Open(filename)
@@ -133,7 +133,7 @@ func readLabels(filename string) (y *mat.Dense) {
 
 	//################################################
 
-	y = mat.NewDense(n, outputs, make([]float64, n*outputs)) //creating y (label) matrix {n, outputs}
+	y = mat.NewDense(n, outputs, nil) //creating y (label) matrix {n, outputs}
 
 	for i, a := range answers { //for each answer (or image count)
 		y.Set(i, int(a), 1) //setting value in row of our current image in column of the right answer to 1

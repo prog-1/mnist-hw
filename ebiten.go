@@ -22,7 +22,7 @@ const (
 type App struct {
 	//For drawing
 	screen                         *ebiten.Image //screen buffer
-	w, b                           *mat.Dense    //trained weight and bias matrices to run our drawing through the model
+	w1, b1, w2, b2                 *mat.Dense    //trained weight and bias matrices to run our drawing through the model
 	prevCursorPosX, prevCursorPosY int           //previous mouse position to draw the line with anti-aliasing
 }
 
@@ -56,7 +56,11 @@ func (a *App) Update() error {
 
 	} else if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
 		//a.PrintScreen()
-		fmt.Println(inference(a.ScreenToMatrix(), a.w, a.b))
+		h, _ := inference(a.ScreenToMatrix(), a.w1, a.b1, a.w2, a.b2)
+		fmt.Println("h:", mat.Formatted(h))
+		//fmt.Println("w:", mat.Formatted(a.w))//don't print this monster please
+		//fmt.Println("b:", mat.Formatted(a.b))
+
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyD) {
@@ -84,8 +88,8 @@ func (a *App) Layout(inWidth, inHeight int) (int, int) {
 	return rows, columns //returning 28x28 to set bigger pixel size
 }
 
-func NewApp(w, b *mat.Dense) *App {
-	return &App{ebiten.NewImage(rows, columns), w, b, 0, 0}
+func NewApp(w1, b1, w2, b2 *mat.Dense) *App {
+	return &App{ebiten.NewImage(rows, columns), w1, b1, w2, b2, 0, 0}
 }
 
 // Prints content drawed on the screen to the console
