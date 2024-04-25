@@ -47,22 +47,22 @@ func regression(x, y *mat.Dense, n int) (w1, b1, w2, b2 *mat.Dense) {
 	//1st layer
 
 	//Weight matrix
-	w1 = mat.NewDense(size, outputs, nil)                                                  //declaring dense matrix {size,outputs}
-	w1.Apply(func(i, j int, v float64) float64 { return float64(source.Int31n(100)) }, w1) //making each element equal to 1
+	w1 = mat.NewDense(size, outputs, nil)                                                  //w1 = {size,outputs} = {784, 10}
+	w1.Apply(func(i, j int, v float64) float64 { return float64(source.Int31n(100)) }, w1) //setting random numbers from 1 to 100
 
 	//Bias matrix
-	b1 = mat.NewDense(n, outputs, nil)                                                     //declaring dense matrix {1,outputs}
-	b1.Apply(func(i, j int, v float64) float64 { return float64(source.Int31n(100)) }, b1) //making each element equal to 1
+	b1 = mat.NewDense(1, outputs, nil)                                                     //b1 = {1,outputs} = {1,10}
+	b1.Apply(func(i, j int, v float64) float64 { return float64(source.Int31n(100)) }, b1) //setting random numbers from 1 to 100
 
 	//2nd layer
 
 	//Weight matrix
-	w2 = mat.NewDense(size, outputs, nil)                                                  //declaring dense matrix {...}
-	w2.Apply(func(i, j int, v float64) float64 { return float64(source.Int31n(100)) }, w2) //making each element equal to 1
+	w2 = mat.NewDense(size, outputs, nil)                                                  //w2 = {size,outputs} = {784, 10}
+	w2.Apply(func(i, j int, v float64) float64 { return float64(source.Int31n(100)) }, w2) //setting random numbers from 1 to 100
 
 	//Bias matrix
-	b2 = mat.NewDense(n, outputs, nil)                                                     //declaring dense matrix {...}
-	b2.Apply(func(i, j int, v float64) float64 { return float64(source.Int31n(100)) }, b2) //making each element equal to 1
+	b2 = mat.NewDense(1, outputs, nil)                                                     //b2 = {1,outputs} = {1,10}
+	b2.Apply(func(i, j int, v float64) float64 { return float64(source.Int31n(100)) }, b2) //setting random numbers from 1 to 100
 
 	//### Training ###
 
@@ -91,51 +91,46 @@ func gradientDescent(x, y, w1, b1, w2, b2 *mat.Dense) (dw1, db1, dw2, db2 *mat.D
 	//(all gradients are already scaled on learning rate in "gradients" function)
 
 	//1st layer
-	w1.Sub(w1, dw1) //w1 - dw1
-	b1.Sub(b1, db1) //b1 - db1
+	w1.Sub(w1, dw1) //w1 - dw1 | {784, 10}
+	b1.Sub(b1, db1) //b1 - db1 | {1, 10}
 
 	//2nd layer
-	w2.Sub(w2, dw2) //w2 - dw2
-	b2.Sub(b2, db2) //b2- db2
+	w2.Sub(w2, dw2) //w2 - dw2 | {784, 10}
+	b2.Sub(b2, db2) //b2 - db2 | {1, 10}
 
 	return dw1, db1, dw2, db2 //returning adjusted coefficients
 }
 
-// Caclulating current gradients
+// Caclulating current gradients (dCost)
 func gradients(x, y, z, h, w2 *mat.Dense) (*mat.Dense, *mat.Dense, *mat.Dense, *mat.Dense) {
 
-	//### Differences ###
-	d := &mat.Dense{} //differences(deltas)(errors) matrix (z - y)
-
-	d.Sub(z, y) //subtracting labels from predictions to get differences
-
-	//### Gradient declaration ###
+	//### Gradient Calculation ###
 
 	//### dE_dt2 ###
 	dE_dt2 := &mat.Dense{}
-	dE_dt2.Sub(z, y)
+	dE_dt2.Sub(z, y) // dE_dt2 = {60000,10}
 
 	//### dE_dw2 ###
 	dE_dw2 := &mat.Dense{}
-	dE_dw2.Mul(h.T(), dE_dt2) // dE_dW2 = {size, outputs} = {784, 10}
+	dE_dw2.Mul(h.T(), dE_dt2) // dE_dw2 = h.T * dE_dt2 = {10,60000} * {60000,10} = {10, 10}  [??? But should be {784,10} ???]
 
 	//### dE_db2 ###
-	dE_db2 := dE_dt2 // dE_dB2 = size, outputs} = {1, 784}
+	dE_db2 := dE_dt2 // dE_db2 = {60000,10} [??? But should be {1,10} ???]
 
 	//### dE_dh ###
 	dE_dh := &mat.Dense{}
-	dE_dh.Mul(dE_dt2, w2.T())
+	dE_dh.Mul(dE_dt2, w2.T()) //dE_dh = {60000,10} * {10,784} = {60000,784} [??? But should be {60000,10} ???]
 
 	//### dE_dt1 ###
 	dE_dt1 := &mat.Dense{}
-	dE_dt1.MulElem(dE_dh, h)
+	dE_dt1.MulElem(dE_dh, h) // dE_dt1 = {60000,784} * {60000,10} | [??? dE_dh should be {60000,10} ???]
 
 	//### dE_dw1 ###
 	dE_dw1 := &mat.Dense{}
-	dE_dw1.Mul(x.T(), dE_dt1) // dE_dW1 = {size, outputs} = {784, 10}
+	dE_dw1.Mul(x.T(), dE_dt1) // dE_dw1 = {784,60000} * {60000,784} | [??? dE_dh should be {60000,10} ???]
 
 	//### dE_db1 ###
-	dE_db1 := dE_dt1 // dE_dB1 = {1, outputs} = {1, 10}
+	dE_db1 := dE_dt1 // dE_db1 = {60000,10} | [??? But should be {1,10} ???]
 
 	//### Applying learning rates ###
 	//(previously there was diffision on n (image count))
@@ -158,9 +153,15 @@ func inference(x, w1, b1, w2, b2 *mat.Dense) (h, z *mat.Dense) {
 	h.Apply(func(i, j int, v float64) float64 { return sigmoid(v + b1.At(0, j)) }, h) //h = g(w1*x + b1) | 60000x10
 
 	//h1/x2 -> t2 -> z
+	t2 := &mat.Dense{}
+	t2.Mul(h, w2.T()) // t2 = w2.T*h | 60000x10 * 10x784 = 60000x784
+	//### Converting 60000x784 into 60000x10 ###
+	ones := mat.NewDense(size, outputs, nil) // 784x10 of ones
+	ones.Apply(func(i, j int, v float64) float64 { return 1 }, ones)
 	z = &mat.Dense{}
-	z.Mul(h, w2.T())                                                           // t2 = w2.T*h | 60000x10 * 10x784 = 60000x784
-	z.Apply(func(i, j int, v float64) float64 { return (v + b2.At(0, j)) }, z) // t2 = w2*h + b2 | 60000x784
+	z.Mul(t2, ones) //t2: 60000x784 * 784x10 = 60000x10
+	//###
+	z.Apply(func(i, j int, v float64) float64 { return (v + b2.At(0, j)) }, z) // t2 = w2*h + b2 | 60000x10
 	z = softmax(z)                                                             // z = sm(w2*h + b2)
 
 	return h, z
