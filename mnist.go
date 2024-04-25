@@ -143,26 +143,26 @@ func readLabels(n int, filename string) (y *mat.Dense) {
 	return y
 }
 
-// Printing one data set digit to the console
-func printDigit(pixels []float64) {
+//// Printing one data set digit to the console
+// func printDigit(pixels []float64) {
 
-	var pb []byte //print buffer
+// 	var pb []byte //print buffer
 
-	for i, p := range pixels { //p - pixel
-		if i%columns == 0 {
-			pb = append(pb, '\n')
-		}
-		if p == 0 {
-			pb = append(pb, ' ', ' ')
-		} else if p < 128 {
-			pb = append(pb, '.', '.')
-		} else {
-			pb = append(pb, '#', '#')
-		}
-	}
+// 	for i, p := range pixels { //p - pixel
+// 		if i%columns == 0 {
+// 			pb = append(pb, '\n')
+// 		}
+// 		if p == 0 {
+// 			pb = append(pb, ' ', ' ')
+// 		} else if p < 128 {
+// 			pb = append(pb, '.', '.')
+// 		} else {
+// 			pb = append(pb, '#', '#')
+// 		}
+// 	}
 
-	fmt.Println(string(pb))
-}
+// 	fmt.Println(string(pb))
+// }
 
 // Conversion of []byte into []float64 (works fine 👌)
 func byteToFloat(bytes []byte) (floats []float64) {

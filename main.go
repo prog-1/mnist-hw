@@ -29,8 +29,11 @@ func main() {
 
 	//################## Machine Learning ####################
 
-	w1, b1, w2, b2 := regression(xTrain, yTrain, n)                  //going through training process
-	fmt.Println("Accuracy:", accuracy(xTest, yTest, w1, b1, w2, b2)) //printing accuracy of the trained model
+	w1, b1, w2, b2 := regression(xTrain, yTrain) //going through training process
+
+	//Accuracy
+	_, z := inference(xTest, w1, b1, w2, b2)             //getting answers on test dataset
+	fmt.Println("\nFinal accuracy:", accuracy(z, yTest)) //printing accuracy of the trained model
 
 	//####################### Ebiten #########################
 
