@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"log"
 	"math"
+	"math/rand/v2"
 	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -70,7 +71,7 @@ func softmax(z, s float64) float64 {
 	return math.Exp(z) / s
 }
 
-func inference(inputs, w, b, w2, b2 *mat.Dense) *mat.Dense {
+func inference(inputs, w, b, w2, b2 *mat.Dense) (*mat.Dense, *mat.Dense) {
 	var y mat.Dense
 	y.Mul(inputs, w)
 	y.Apply(func(_, j int, v float64) float64 {
@@ -81,36 +82,42 @@ func inference(inputs, w, b, w2, b2 *mat.Dense) *mat.Dense {
 	z.Apply(func(_, j int, v float64) float64 {
 		return v + b2.At(0, j)
 	}, &z)
-	var s float64
 	_, c := z.Dims()
-	for i := 0; i < c; i++ {
-		s += math.Exp(z.At(0, i))
-	}
-	z.Apply(func(_, j int, v float64) float64 {
+	z.Apply(func(i, j int, v float64) float64 {
+		var s float64
+		for k := 0; k < c; k++ {
+			s += math.Exp(z.At(i, k))
+		}
 		return softmax(v, s)
 	}, &z)
-	return &z
+	return &z, &y
 }
 
-func dCost(inputs, y, p *mat.Dense, lrW, lrB float64) (dw, db *mat.Dense) {
+func dCost(inputs, y, p, h1, w2 *mat.Dense, lrW, lrB float64) (*mat.Dense, *mat.Dense, *mat.Dense, *mat.Dense) {
+	var dw, dw2 mat.Dense
 	r, c := p.Dims()
 	data := make([]float64, r*10)
 	for i := 0; i < r; i++ {
 		data[i*10+int(y.At(i, 0))] = 1
 	}
 	l := mat.NewDense(r, c, data)
-	dw = mat.NewDense(784, 10, nil)
-	var diff mat.Dense
-	diff.Sub(p, l)
-	dw.Mul(inputs.T(), &diff)
-	dw.Scale(lrW/float64(inputs.RawMatrix().Rows), dw)
-	var b [10]float64
-	for i := range b {
-		b[i] = mat.Sum(diff.ColView(i))
+	var dt2, dh1, dert1, dt1 mat.Dense
+	dt2.Sub(p, l)
+	dw2.Mul(h1.T(), &dt2)
+	dw2.Scale(lrW/float64(inputs.RawMatrix().Rows), &dw2)
+	db2 := mat.DenseCopyOf(&dt2)
+	db2.Scale(lrB/float64(inputs.RawMatrix().Rows), db2)
+	dh1.Mul(&dt2, w2.T())
+	derSigmoid := func(i, j int, v float64) float64 {
+		return v * (1 - v)
 	}
-	db = mat.NewDense(1, 10, b[:])
+	dert1.Apply(derSigmoid, &dh1)
+	dt1.MulElem(&dt2, &dert1)
+	dw.Mul(inputs.T(), &dt1)
+	dw.Scale(lrW/float64(inputs.RawMatrix().Rows), &dw)
+	db := mat.DenseCopyOf(&dt1)
 	db.Scale(lrB/float64(inputs.RawMatrix().Rows), db)
-	return
+	return &dw, db, &dw2, db2
 }
 
 func accuracy(inputs, y []float64, w, b, w2, b2 *mat.Dense) float64 {
@@ -126,7 +133,7 @@ func accuracy(inputs, y []float64, w, b, w2, b2 *mat.Dense) float64 {
 
 func predict(inputs []float64, w, b, w2, b2 *mat.Dense) int {
 	x := mat.NewDense(1, 784, inputs)
-	pred := inference(x, w, b, w2, b2)
+	pred, _ := inference(x, w, b, w2, b2)
 	var num int
 	var numP float64
 	for i := 0; i < 10; i++ {
@@ -136,6 +143,13 @@ func predict(inputs []float64, w, b, w2, b2 *mat.Dense) int {
 		}
 	}
 	return num
+}
+
+func random(m *mat.Dense, r *rand.Rand) *mat.Dense {
+	m.Apply(func(i int, j int, v float64) float64 {
+		return 10 - 20*r.Float64()
+	}, m)
+	return m
 }
 
 func main() {
@@ -154,19 +168,29 @@ func main() {
 		yTest = append(yTest, float64(testLabels[i]))
 	}
 	inputsTrain, labelsTrain := mat.NewDense(60000, 784, xTrain), mat.NewDense(len(yTrain), 1, yTrain)
+	rand := rand.New(rand.NewPCG(1, 2))
 	w, b := mat.NewDense(784, 10, nil), mat.NewDense(1, 10, nil)
-	w2, b2 := mat.NewDense(784, 10, nil), mat.NewDense(1, 10, nil)
+	w2, b2 := mat.NewDense(10, 10, nil), mat.NewDense(1, 10, nil)
+	w, b, w2, b2 = random(w, rand), random(b, rand), random(w2, rand), random(b2, rand)
 	go func() {
-		epochs := int(1e2)
-		lrW, lrB := 1e-5, 1e0
+		epochs := int(1e3)
+		lrW, lrB := 1e0, 1e1
 		for i := 0; i <= epochs; i++ {
-			y := inference(inputsTrain, w, b, w2, b2)
-			dw, db := dCost(inputsTrain, labelsTrain, y, lrW, lrB)
+			y, h1 := inference(inputsTrain, w, b, w2, b2)
+			dw, db, dw2, db2 := dCost(inputsTrain, labelsTrain, y, h1, w2, lrW, lrB)
+			dbData, db2Data := make([]float64, 10), make([]float64, 10)
+			for j := range dbData {
+				dbData[j] = mat.Sum(db.ColView(j))
+				db2Data[j] = mat.Sum(db2.ColView(j))
+			}
+			dbt, db2t := mat.NewDense(1, 10, dbData[:]), mat.NewDense(1, 10, db2Data[:])
 			w.Sub(w, dw)
-			b.Sub(b, db)
+			b.Sub(b, dbt)
+			w2.Sub(w2, dw2)
+			b2.Sub(b2, db2t)
 			fmt.Printf(`Epoch: %d
-			Accuracy: %.2f
-			`, i, accuracy(xTest, yTest, w, b, w2, b2))
+            Accuracy: %.2f
+            `, i, accuracy(xTest, yTest, w, b, w2, b2))
 		}
 	}()
 	ebiten.SetWindowSize(960, 720)
