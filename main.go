@@ -24,7 +24,7 @@ const (
 	screenWidth  = 640
 	screenHeight = 480
 	epochs       = 100000
-	lrW, lrB     = 0.01, 1
+	lrW, lrB     = 0.01, 0.8
 	rows, cols   = 28, 28
 )
 
