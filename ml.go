@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"math"
 
 	"gonum.org/v1/gonum/mat"
@@ -135,4 +136,35 @@ func accuracy(xTest, yTest, w, b *mat.Dense) float64 {
 		}
 	}
 	return float64(r) / correctCount
+}
+
+// Returns vector of the full probability destribution for the input vector elements.
+// Sum of all elements in probabilities = 1.
+// Input vector size - N x 1, probabilities size - N x 1.
+// Row input vector will be transposed.
+func softmax(vector *mat.Dense) (probabilities *mat.Dense) {
+	r, c := vector.Dims()
+	if c != 1 {
+		// Working only with column vectors
+		vector = mat.DenseCopyOf(vector.T())
+		r, c = c, r
+	}
+	if c != 1 {
+		// Throwing error instead of string for compatibility
+		// with the error-handling code that uses errors package.
+		panic(errors.New("softmax argument must be a vector, not any other matrix"))
+	}
+
+	var denominator float64
+	for i := 0; i < r; i++ {
+		denominator += math.Exp(vector.At(i, 0))
+	}
+
+	probabilities = mat.NewDense(r, 1, nil)
+	probabilities.Apply(
+		func(i, _ int, v float64) float64 {
+			return math.Exp(vector.At(i, 0)) / denominator
+		}, probabilities)
+
+	return probabilities
 }
