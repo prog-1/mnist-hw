@@ -15,7 +15,7 @@ const (
 )
 
 func main() {
-	xTrain, yTrain, xTest, yTest := MnistImages("data/t10k-images.idx3-ubyte"), MnistLabels("data/t10k-labels.idx1-ubyte"), MnistImages("data/train-images.idx3-ubyte"), MnistLabels("data/train-labels.idx1-ubyte")
+	xTrain, yTrain, xTest, yTest := MnistDataFromFile("data/t10k-images.idx3-ubyte"), MnistDataFromFile("data/t10k-labels.idx1-ubyte"), MnistDataFromFile("data/train-images.idx3-ubyte"), MnistDataFromFile("data/train-labels.idx1-ubyte")
 	w, b, err := train(epochCount, xTrain, yTrain, lrw, lrb, nil)
 	if err != nil {
 		panic(err)
@@ -39,28 +39,15 @@ func ClearConsole() {
 	cmd.Run()
 }
 
-func MnistImages(path string) *mat.Dense {
+func MnistDataFromFile(path string) *mat.Dense {
 	f, err1 := os.Open(path)
 	if err1 != nil {
 		panic(fmt.Sprintf("failed to open file %q: %q", path, err1))
 	}
 	defer f.Close()
-	images, err2 := ReadMnistImages(f)
+	data, err2 := MnistDataFromReader(f)
 	if err2 != nil {
 		panic(fmt.Sprintf("failed to read file %q: %q", path, err2))
 	}
-	return images.Pixels
-}
-
-func MnistLabels(path string) *mat.Dense {
-	f, err1 := os.Open(path)
-	if err1 != nil {
-		panic(fmt.Sprintf("failed to open file %q: %q", path, err1))
-	}
-	defer f.Close()
-	images, err2 := ReadMnistLabels(f)
-	if err2 != nil {
-		panic(fmt.Sprintf("failed to read file %q: %q", path, err2))
-	}
-	return images.Labels
+	return data
 }
