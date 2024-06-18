@@ -42,12 +42,12 @@ func ClearConsole() {
 func MnistDataFromFile(path string) *mat.Dense {
 	f, err1 := os.Open(path)
 	if err1 != nil {
-		panic(fmt.Sprintf("failed to open file %q: %q", path, err1))
+		panic(fmt.Errorf("failed to open file %q: %q", path, err1))
 	}
 	defer f.Close()
 	data, err2 := MnistDataFromReader(f)
 	if err2 != nil {
-		panic(fmt.Sprintf("failed to read file %q: %q", path, err2))
+		panic(fmt.Errorf("failed to read file %q: %q", path, err2))
 	}
 	return data
 }
