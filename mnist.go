@@ -57,12 +57,9 @@ func mnistDataFromReader(r io.Reader) (*mat.Dense, error) {
 		}
 	}
 	data := make([]byte, count*rows*cols)
-	n, err := io.ReadFull(r, data)
+	_, err := io.ReadFull(r, data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read data: %v", err)
-	}
-	if n != len(data) {
-		return nil, fmt.Errorf("read %d bytes, want %d", n, len(data))
 	}
 
 	return bytesToMat(count, rows*cols, data), nil

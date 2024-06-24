@@ -3,52 +3,89 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"testing"
+
+	"gonum.org/v1/gonum/mat"
 )
 
-// What's the point of this stuff?
-// I want to test whether my MnistDataFromReader
-// reads data from a reader properly
-// How am I going to do this?
-// Errors:
-// 1. Catch error with invalid magic number
-// 2. Catch error if
-// I should check whether the matrix we return
-// How can I test this?
-
 func TestMnist(t *testing.T) {
-	for _, tc := range []struct {
+	type Want struct {
+		output *mat.Dense
+		err    error
+	}
+	for n, tc := range []struct {
+		input io.Reader
+		want  Want
 	}{
-		// Valid image file.
-		// Valid label file.
-		// File with an incorrect magic number.
-		// File with incomplete content, i.e.:
-		// 1. count * rows * cols != len(data)
-		// 2. no magic number
-		// 3. Image file data with abscent rows or cols
-		// 4. not enough data
+		// Valid image file
+		{genMnistMockData(0x803, 1, 1, 1), Want{mat.NewDense(1, 1, []float64{5}), nil}},
+		// Valid label file
+		{genMnistMockData(0x801, 1, 1, 1), Want{mat.NewDense(1, 1, []float64{5}), nil}},
 		// Empty file
+		{bytes.NewReader([]byte{}), Want{nil, fmt.Errorf("failed to read magic number: EOF")}},
+		// File with an incorrect magic number.
+		{genMnistMockData(0x802, 1, 1, 1), Want{nil, fmt.Errorf("invalid magic number: 802")}},
+		// Only magic number
+		{bytes.NewReader([]byte{0x00, 0x00, 0x08, 0x03}), Want{nil, fmt.Errorf("failed to read element count: EOF")}},
+		// Only magic number and count
+		{bytes.NewReader([]byte{0x00, 0x00, 0x08, 0x03, 0x00, 0x00, 0x00, 0x01}), Want{nil, fmt.Errorf("failed to read row count: EOF")}},
+		// Only magic number, count and rows
+		{func() io.Reader {
+			mockFile := new(bytes.Buffer)
+			writeToFile(mockFile, 0x803)
+			writeToFile(mockFile, 1)
+			writeToFile(mockFile, 1)
+			return mockFile
+		}(), Want{nil, fmt.Errorf("failed to read column count: EOF")}},
+		// Only no data
+		{func() io.Reader {
+			mockFile := new(bytes.Buffer)
+			writeToFile(mockFile, 0x803)
+			writeToFile(mockFile, 1)
+			writeToFile(mockFile, 1)
+			writeToFile(mockFile, 1)
+			return mockFile
+		}(), Want{nil, fmt.Errorf("failed to read data: EOF")}},
+		// Incomplete data
+		{func() io.Reader {
+			mockFile := new(bytes.Buffer)
+			writeToFile(mockFile, 0x801)
+			writeToFile(mockFile, 2)
+			if _, err := mockFile.Write([]byte{byte(1)}); err != nil {
+				panic(err)
+			}
+			return mockFile
+		}(), Want{nil, fmt.Errorf("failed to read data: unexpected EOF")}},
 	} {
-
+		if got, err := mnistDataFromReader(tc.input); err != nil {
+			if tc.want.err == nil || err.Error() != tc.want.err.Error() {
+				t.Errorf("mnistDataFromReader(tc%v.input) error = %v, wantErr %v", n, err, tc.want.err)
+			}
+		} else if tc.want.err != nil {
+			t.Errorf("mnistDataFromReader(tc%v.input) expected error, got none", n)
+		} else if !mat.Equal(tc.want.output, got) {
+			t.Errorf("mnistDataFromReader(tc%v.input) = %v, want %v", n, got, tc.want)
+		}
 	}
 }
 
-func GenMnistMockData(magic, count, rows, cols uint32) io.Reader {
+func writeToFile(file io.Writer, value uint32) {
+	if err := binary.Write(file, binary.BigEndian, value); err != nil {
+		panic(err)
+	}
+}
+
+func genMnistMockData(magic, count, rows, cols uint32) io.Reader {
 	mockFile := new(bytes.Buffer)
 
-	writeToMockFile := func(value uint32) {
-		if err := binary.Write(mockFile, binary.BigEndian, value); err != nil {
-			panic(err)
-		}
-	}
-
-	writeToMockFile(magic)
-	writeToMockFile(count)
+	writeToFile(mockFile, magic)
+	writeToFile(mockFile, count)
 
 	if magic == 0x803 /*images*/ {
-		writeToMockFile(rows)
-		writeToMockFile(cols)
+		writeToFile(mockFile, rows)
+		writeToFile(mockFile, cols)
 	}
 
 	data := make([]byte, count*rows*cols)
