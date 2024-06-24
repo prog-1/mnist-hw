@@ -23,14 +23,15 @@ const (
 // }
 
 func main() {
-	images := MnistDataFromPath("data/t10k-images.idx3-ubyte")
+	images, labels := MnistDataFromPath("data/t10k-images.idx3-ubyte"), MnistDataFromPath("data/t10k-labels.idx1-ubyte")
 	for i := 1; ; {
 		fmt.Printf("Enter image's sequence number: ")
 		fmt.Scan(&i)
 		if i == 0 {
 			break
 		}
-		PrintMnistImageFromImages(i-1, images)
+		PrintMnistImage(i-1, images)
+		fmt.Printf("Label: %d\n\n", int(labels.At(i-1, 0)))
 	}
 }
 

@@ -79,7 +79,7 @@ func bytesToMat(rows, cols uint32, input []byte) *mat.Dense {
 
 // Draws in the console the i'th image from the images matrix.
 // Assumes images being stored as rows of pixels.
-func PrintMnistImageFromImages(i int, images *mat.Dense) {
+func PrintMnistImage(i int, images *mat.Dense) {
 	cols := images.RawMatrix().Cols
 	elementCount := int(math.Sqrt(float64(cols)))
 
