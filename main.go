@@ -5,8 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
-
-	"gonum.org/v1/gonum/mat"
 )
 
 const (
@@ -14,14 +12,26 @@ const (
 	lrw, lrb   = 1e-3, 0.5
 )
 
+// func main() {
+// 	xTrain, yTrain, xTest, yTest := MnistDataFromFile("data/t10k-images.idx3-ubyte"), MnistDataFromFile("data/t10k-labels.idx1-ubyte"), MnistDataFromFile("data/train-images.idx3-ubyte"), MnistDataFromFile("data/train-labels.idx1-ubyte")
+// 	w, b, err := train(epochCount, xTrain, yTrain, lrw, lrb, nil)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	fmt.Println(accuracy(xTest, yTest, w, b))
+// 	RunDrawing(w, b)
+// }
+
 func main() {
-	xTrain, yTrain, xTest, yTest := MnistDataFromFile("data/t10k-images.idx3-ubyte"), MnistDataFromFile("data/t10k-labels.idx1-ubyte"), MnistDataFromFile("data/train-images.idx3-ubyte"), MnistDataFromFile("data/train-labels.idx1-ubyte")
-	w, b, err := train(epochCount, xTrain, yTrain, lrw, lrb, nil)
-	if err != nil {
-		panic(err)
+	images := MnistDataFromPath("data/t10k-images.idx3-ubyte")
+	for i := 1; ; {
+		fmt.Printf("Enter image's sequence number: ")
+		fmt.Scan(&i)
+		if i == 0 {
+			break
+		}
+		PrintMnistImageFromImages(i-1, images)
 	}
-	fmt.Println(accuracy(xTest, yTest, w, b))
-	RunDrawing(w, b)
 }
 
 func ClearConsole() {
@@ -37,17 +47,4 @@ func ClearConsole() {
 	}
 	cmd.Stdout = os.Stdout
 	cmd.Run()
-}
-
-func MnistDataFromFile(path string) *mat.Dense {
-	f, err1 := os.Open(path)
-	if err1 != nil {
-		panic(fmt.Errorf("failed to open file %q: %q", path, err1))
-	}
-	defer f.Close()
-	data, err2 := MnistDataFromReader(f)
-	if err2 != nil {
-		panic(fmt.Errorf("failed to read file %q: %q", path, err2))
-	}
-	return data
 }

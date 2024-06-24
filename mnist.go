@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
+	"os"
 
 	"gonum.org/v1/gonum/mat"
 )
@@ -18,9 +20,25 @@ import (
 // 4. 4 bytes: number of columns
 // 5. n bytes: data
 
-func MnistDataFromReader(r io.Reader) (*mat.Dense, error) {
+// Returns matrix with all the images or labels from a MNIST file by path
+func MnistDataFromPath(path string) *mat.Dense {
+	f, err1 := os.Open(path)
+	if err1 != nil {
+		panic(fmt.Errorf("failed to open file %q: %q", path, err1))
+	}
+	defer f.Close()
+	data, err2 := mnistDataFromReader(f)
+	if err2 != nil {
+		panic(fmt.Errorf("failed to read file %q: %q", path, err2))
+	}
+	return data
+}
+
+// Returns matrix with all the images or labels from a reader with a MNIST file
+func mnistDataFromReader(r io.Reader) (*mat.Dense, error) {
 	var magic, count uint32
 	if err := binary.Read(r, binary.BigEndian, &magic); err != nil {
+		// Returning error instead of panic, because it is an exported function
 		return nil, fmt.Errorf("failed to read magic number: %v", err)
 	}
 	if magic != 0x803 /*images*/ && magic != 0x801 /*labels*/ {
@@ -37,39 +55,45 @@ func MnistDataFromReader(r io.Reader) (*mat.Dense, error) {
 		if err := binary.Read(r, binary.BigEndian, &cols); err != nil {
 			return nil, fmt.Errorf("failed to read column count: %v", err)
 		}
-		count *= rows * cols
 	}
-	data := make([]byte, count)
+	data := make([]byte, count*rows*cols)
 	n, err := io.ReadFull(r, data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read data: %v", err)
 	}
 	if n != len(data) {
-		return nil, fmt.Errorf("read %d bytes, want %d", n, count)
+		return nil, fmt.Errorf("read %d bytes, want %d", n, len(data))
 	}
 
 	return bytesToMat(count, rows*cols, data), nil
 }
 
-func bytesToMat(rowCount, colCount uint32, input []byte) *mat.Dense {
+// Returns matrix of the dimensions specified filled with bytes casted to float64
+func bytesToMat(rows, cols uint32, input []byte) *mat.Dense {
 	output := make([]float64, len(input))
 	for i, x := range input {
 		output[i] = float64(x)
 	}
-	return mat.NewDense(int(rowCount), int(colCount), output)
+	return mat.NewDense(int(rows), int(cols), output)
 }
 
-func PrintMnistImage(rowCount, colCount uint32, pixels []byte) {
-	for r := uint32(0); r < rowCount; r++ {
-		for c := uint32(0); c < colCount; c++ {
-			if pixel := pixels[r*colCount+c]; pixel == 0 {
-				fmt.Print(" ")
-			} else if pixel < 128 {
-				fmt.Print(".")
-			} else {
-				fmt.Print("#")
-			}
+// Draws in the console the i'th image from the images matrix.
+// Assumes images being stored as rows of pixels.
+func PrintMnistImageFromImages(i int, images *mat.Dense) {
+	cols := images.RawMatrix().Cols
+	elementCount := int(math.Sqrt(float64(cols)))
+
+	for j := 0; j < cols; j++ {
+		if pixel := images.At(i, j); pixel == 0 {
+			fmt.Print(" ")
+		} else if pixel < 128 {
+			fmt.Print(".")
+		} else {
+			fmt.Print("#")
 		}
-		fmt.Println()
+		if j%elementCount == 0 {
+			fmt.Println()
+		}
 	}
+	fmt.Println()
 }
