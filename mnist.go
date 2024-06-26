@@ -21,7 +21,7 @@ import (
 // 5. n bytes: data
 
 // Returns matrix with all the images or labels from a MNIST file by path
-func MnistDataFromPath(path string) *mat.Dense {
+func MnistDataByPath(path string) *mat.Dense {
 	f, err1 := os.Open(path)
 	if err1 != nil {
 		panic(fmt.Errorf("failed to open file %q: %q", path, err1))

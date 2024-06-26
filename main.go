@@ -12,27 +12,14 @@ const (
 	lrw, lrb   = 1e-3, 0.5
 )
 
-// func main() {
-// 	xTrain, yTrain, xTest, yTest := MnistDataFromFile("data/t10k-images.idx3-ubyte"), MnistDataFromFile("data/t10k-labels.idx1-ubyte"), MnistDataFromFile("data/train-images.idx3-ubyte"), MnistDataFromFile("data/train-labels.idx1-ubyte")
-// 	w, b, err := train(epochCount, xTrain, yTrain, lrw, lrb, nil)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	fmt.Println(accuracy(xTest, yTest, w, b))
-// 	RunDrawing(w, b)
-// }
-
 func main() {
-	images, labels := MnistDataFromPath("data/t10k-images.idx3-ubyte"), MnistDataFromPath("data/t10k-labels.idx1-ubyte")
-	for i := 1; ; {
-		fmt.Printf("Enter image's sequence number: ")
-		fmt.Scan(&i)
-		if i == 0 {
-			break
-		}
-		PrintMnistImage(i-1, images)
-		fmt.Printf("Label: %d\n\n", int(labels.At(i-1, 0)))
+	xTrain, yTrain, xTest, yTest := MnistDataByPath("data/t10k-images.idx3-ubyte"), MnistDataByPath("data/t10k-labels.idx1-ubyte"), MnistDataByPath("data/train-images.idx3-ubyte"), MnistDataByPath("data/train-labels.idx1-ubyte")
+	w, b, err := train(epochCount, xTrain, yTrain, lrw, lrb, nil)
+	if err != nil {
+		panic(err)
 	}
+	fmt.Println(accuracy(xTest, yTest, w, b))
+	RunDrawing(w, b)
 }
 
 func ClearConsole() {
