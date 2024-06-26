@@ -10,6 +10,23 @@ import (
 
 const epsilon = 1e-6
 
+func TestSigmoid(t *testing.T) {
+	for _, tc := range []struct {
+		input float64
+		want  float64
+	}{
+		{0, 0.5},
+		{1, 1 / (1 + math.Exp(-1))},
+		{-1, 1 / (1 + math.Exp(1))},
+		{100, 1 / (1 + math.Exp(-100))},
+		{-100, 1 / (1 + math.Exp(100))},
+	} {
+		if got := sigmoid(0, 0, tc.input); math.Abs(got-tc.want) > epsilon {
+			t.Errorf("sigmoid(%v) = %v, want %v", tc.input, got, tc.want)
+		}
+	}
+}
+
 func TestSoftmax(t *testing.T) {
 	for _, tc := range []struct {
 		input     *mat.Dense
