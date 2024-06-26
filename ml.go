@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"math"
 
 	"gonum.org/v1/gonum/mat"
@@ -9,20 +10,41 @@ import (
 
 const (
 	digitCount = 10
-	pixelCount = 784
 )
 
-func sigmoid(_, _ int, v float64) float64 {
-	return 1 / (1 + math.Exp(-v))
+// pixels: rows - all pixels of an image, cols - pixels with the same position of all images
+// N - image count, M - pixel count for one image
+// Dims(r x c): pixels - N x M, labels - N x 1, w - M x 10 , dw - M x 10, b - 1 x 10, db - 1 x 10
+func Train(epochCount int, pixels, labels *mat.Dense, lrw, lrb float64,
+	sink func(epoch int, w, dw, b, db *mat.Dense)) (w, b *mat.Dense, err error) {
+	// Asserting dimensions of all the input matrices
+	imageCount, pixelCount := pixels.Dims()
+	if r, c := labels.Dims(); r != imageCount || c != 1 {
+		return nil, nil, fmt.Errorf("labels.Dims() = %v, %v, want = %v, 1", r, c, imageCount)
+	}
+
+	w = mat.NewDense(pixelCount, digitCount, nil) // w - M x 10, initialized with zeroes
+	b = mat.NewDense(1, digitCount, nil)
+	for epoch := 0; epoch < epochCount; epoch++ {
+		dw, db := dCost(pixels, labels, inference(pixels, w, b))
+
+		// Adjusting weights
+		db.Scale(lrb, db)
+		b.Sub(b, db)
+
+		dw.Scale(lrw, dw)
+		w.Sub(w, dw)
+
+		if sink != nil {
+			sink(epoch, w, dw, b, db)
+		}
+	}
+	return w, b, nil
 }
 
 // Returns 10 probabilities for each image, representing probability of each image being each digit.
-// Dimensions(rows x columns): pixels - N x 784, weights - 784 x 10, biases - 1 x 10, predictions - N x 10.
-// N - image count.
+// Dimensions(rows x columns): pixels - 10000 x 784, weights - 784 x 10, biases - 1 x 10, predictions - 10000 x 10.
 func inference(pixels, weights, biases *mat.Dense) *mat.Dense {
-	if c := pixels.RawMatrix().Cols; c != pixelCount {
-		panic("pixels dims != N x 784")
-	}
 	var predictions mat.Dense
 	predictions.Mul(pixels, weights) // (N x 784) * (784 x 10) = (N x 10)
 	// predictions.Add(predictions, biases)// (N x 10) + (1 x 10) = panic
@@ -31,6 +53,10 @@ func inference(pixels, weights, biases *mat.Dense) *mat.Dense {
 	}, &predictions)
 	predictions.Apply(sigmoid, &predictions)
 	return &predictions
+}
+
+func sigmoid(_, _ int, v float64) float64 {
+	return 1 / (1 + math.Exp(-v))
 }
 
 // Converts original label/digit, into 10 element array of chances. Same size as prediciton.
@@ -84,29 +110,6 @@ func dCost(pixels, labels, predictions *mat.Dense) (dw, db *mat.Dense) {
 	db.Scale(2/float64(imageCount), db)
 
 	return dw, db
-}
-
-// Dims(r x c): w - 784 x 10 , dw - 784 x 10, b - 1 x 10, db - 1 x 10
-func train(epochCount int, pixels, labels *mat.Dense, lrw, lrb float64,
-	sink func(epoch int, w, dw, b, db *mat.Dense)) (w, b *mat.Dense, err error) {
-	_, pixelCount := pixels.Dims()
-	w = mat.NewDense(pixelCount, digitCount, nil) // w - 784 x 10, initialized with zeroes
-	b = mat.NewDense(1, digitCount, nil)
-	for epoch := 0; epoch < epochCount; epoch++ {
-		dw, db := dCost(pixels, labels, inference(pixels, w, b))
-
-		// Adjusting weights
-		db.Scale(lrb, db)
-		b.Sub(b, db)
-
-		dw.Scale(lrw, dw)
-		w.Sub(w, dw)
-
-		if sink != nil {
-			sink(epoch, w, dw, b, db)
-		}
-	}
-	return w, b, nil
 }
 
 // xTest - N x 784, yTest - N x 1, w = 784 x 10, b - 1 x 10,

@@ -14,7 +14,7 @@ const (
 
 func main() {
 	xTrain, yTrain, xTest, yTest := MnistDataByPath("data/t10k-images.idx3-ubyte"), MnistDataByPath("data/t10k-labels.idx1-ubyte"), MnistDataByPath("data/train-images.idx3-ubyte"), MnistDataByPath("data/train-labels.idx1-ubyte")
-	w, b, err := train(epochCount, xTrain, yTrain, lrw, lrb, nil)
+	w, b, err := Train(epochCount, xTrain, yTrain, lrw, lrb, nil)
 	if err != nil {
 		panic(err)
 	}
