@@ -13,10 +13,9 @@ import (
 )
 
 const (
-	screenWidth, screenHeight = 500, 500
-	rowCount, colCount        = 28, 28
-	title                     = "mnist"
-	strokeWidth               = 2
+	rowCount, colCount = 28, 28 // TODO: Make it dynamic
+	title              = "digit-recognition"
+	strokeWidth        = 2
 )
 
 type App struct {
@@ -26,16 +25,19 @@ type App struct {
 	screenBuffer           *ebiten.Image
 }
 
-func NewGame(w, b *mat.Dense) *App {
+func NewGame(physicalSide int, w, b *mat.Dense) *App {
 	return &App{
 		w, b,
 		" ",
 		-1, -1,
-		ebiten.NewImage(screenWidth, screenHeight),
+		ebiten.NewImage(physicalSide, physicalSide),
 	}
 }
 
-func (a *App) Layout(outWidth, outHeight int) (w, h int) { return colCount, rowCount }
+func (a *App) Layout(outWidth, outHeight int) (logicalWidth, logicalHeight int) {
+	return colCount, rowCount
+}
+
 func (a *App) Update() error {
 	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
 		alphas := a.pixelAlphas()
@@ -85,14 +87,16 @@ func (a *App) pixelAlphas() *mat.Dense {
 			alphas[r*colCount+c] = a.screenBuffer.At(c, r).(color.RGBA).A
 		}
 	}
-	return bytesToMat(1, pixelCount, alphas)
+	return bytesToMat(1, rowCount*colCount, alphas)
 }
 
 // Initialises app and runs main loop that handles drawing on screen.
-func RunDrawing(w, b *mat.Dense) {
-	ebiten.SetWindowSize(screenWidth, screenHeight)
+// Panics if image resolution is not square.
+// The variable physicalSide is either screen width or height in physical pixels(width = height).
+func RunDrawing(physicalSide int, w, b *mat.Dense) {
+	ebiten.SetWindowSize(physicalSide, physicalSide)
 	ebiten.SetWindowTitle(title)
-	if err := ebiten.RunGame(NewGame(w, b)); err != nil {
+	if err := ebiten.RunGame(NewGame(physicalSide, w, b)); err != nil {
 		log.Fatal(err)
 	}
 }
