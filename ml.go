@@ -12,21 +12,29 @@ const (
 	digitCount = 10
 )
 
-// pixels: rows - all pixels of an image, cols - pixels with the same position of all images
-// N - image count, M - pixel count for one image
-// Dims(r x c): pixels - N x M, labels - N x 1, w - M x 10 , dw - M x 10, b - 1 x 10, db - 1 x 10
-func Train(epochCount int, pixels, labels *mat.Dense, lrw, lrb float64,
-	sink func(epoch int, w, dw, b, db *mat.Dense)) (w, b *mat.Dense, err error) {
-	// Asserting dimensions of all the input matrices
-	imageCount, pixelCount := pixels.Dims()
+// Creates a handwritten digit recognition machine learning model trained on the input images and labels.
+// The x matrix contains pixels. Rows are all pixels of an image and cols are pixels with the same position of all images.
+// The matrix called labels is a vector containing the actual digits that is depicted on the image with the same index.
+// Dims(rows x cols): x - N x M, labels - N x 1, where N - image count, M - pixel count for a single image.
+// Values w, b, lrw and lrb stand for weights, biases, learning rate weights and learning rate biases.
+func Train(epochCount int, x, labels *mat.Dense, lrw, lrb float64) (w, b *mat.Dense, err error) {
+	// The reason behind calling the matrix with pixels 'x' and not 'pixels' is for versitality if the inference funciton,
+	// which can work not only with a digit recognition model
+
+	// Asserting whether dimensions of the input matrices are appropriate
+	imageCount, pixelCount := x.Dims()
 	if r, c := labels.Dims(); r != imageCount || c != 1 {
 		return nil, nil, fmt.Errorf("labels.Dims() = %v, %v, want = %v, 1", r, c, imageCount)
 	}
 
+	//w - M x 10 , dw - M x 10, b - 10 x 1, db - 10 x 1
 	w = mat.NewDense(pixelCount, digitCount, nil) // w - M x 10, initialized with zeroes
-	b = mat.NewDense(1, digitCount, nil)
+	b = mat.NewDense(digitCount, 1, nil)
+	// The decision to use column vectors in justified by the absence of the necessity to transpose it,
+	// while performing matrix-vector multiplication.
+
 	for epoch := 0; epoch < epochCount; epoch++ {
-		dw, db := dCost(pixels, labels, inference(pixels, w, b))
+		dw, db := dCost(x, labels, inference(x, w, b))
 
 		// Adjusting weights
 		db.Scale(lrb, db)
@@ -34,25 +42,21 @@ func Train(epochCount int, pixels, labels *mat.Dense, lrw, lrb float64,
 
 		dw.Scale(lrw, dw)
 		w.Sub(w, dw)
-
-		if sink != nil {
-			sink(epoch, w, dw, b, db)
-		}
 	}
 	return w, b, nil
 }
 
 // Returns 10 probabilities for each image, representing probability of each image being each digit.
-// Dimensions(rows x columns): pixels - 10000 x 784, weights - 784 x 10, biases - 1 x 10, predictions - 10000 x 10.
-func inference(pixels, weights, biases *mat.Dense) *mat.Dense {
-	var predictions mat.Dense
-	predictions.Mul(pixels, weights) // (N x 784) * (784 x 10) = (N x 10)
-	// predictions.Add(predictions, biases)// (N x 10) + (1 x 10) = panic
-	predictions.Apply(func(i, j int, v float64) float64 {
-		return v + biases.At(0, j)
-	}, &predictions)
-	predictions.Apply(sigmoid, &predictions)
-	return &predictions
+// Dims(rows x cols): x - N x M, w - M x 10, b - 10 x 1, predictions - N x 10
+func inference(x, w, b *mat.Dense) (predictions *mat.Dense) {
+	predictions = mat.NewDense(1, 1, nil) // TODO: Test whether it is necessary
+	predictions.Mul(x, w)                 // (N x M) * (M x 10) = (N x 10)
+	// predictions.Add(predictions, biases)// (N x 10) + (10 x 1) = panic
+	predictions.Apply(func(_, j int, v float64) float64 {
+		return v + b.At(j, 0)
+	}, predictions)
+	predictions.Apply(sigmoid, predictions)
+	return predictions
 }
 
 func sigmoid(_, _ int, v float64) float64 {
