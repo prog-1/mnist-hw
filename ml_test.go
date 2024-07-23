@@ -83,6 +83,8 @@ func TestConvertLabels(t *testing.T) {
 					t.Errorf("convertLabels with input No. %v panics when it must not", n+1)
 				}
 			}()
+			_ = convertLabels(tc.input)
+		} else {
 			if got := convertLabels(tc.input); !mat.EqualApprox(got, tc.want, epsilon) {
 				t.Errorf("convertLabels with input No. %v\n\n Got:%v\n\n Want:\n%v\n\n", n+1, mat.Formatted(got), mat.Formatted(tc.want))
 			}
@@ -98,8 +100,8 @@ func TestConvertPrediction(t *testing.T) {
 	}{
 		// Single max
 		{
-			input:     mat.NewDense(10, 1, []float64{0.95, 0.05, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1}),
-			want:      0,
+			input:     mat.NewDense(10, 1, []float64{0.05, 0.95, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1}),
+			want:      1,
 			mustPanic: false,
 		},
 		// Multiple max
@@ -131,6 +133,8 @@ func TestConvertPrediction(t *testing.T) {
 					t.Errorf("convertPrediction with input No. %v panics when it must not", n+1)
 				}
 			}()
+			_ = convertPrediction(tc.input)
+		} else {
 			if got := convertPrediction(tc.input); got != tc.want {
 				t.Errorf("convertPrediction with input No. %v = %v, want %v", n+1, got, tc.want)
 			}
