@@ -8,7 +8,7 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
-const epsilon = 1e-6
+const epsilon = 1e-3
 
 func TestSigmoid(t *testing.T) {
 	for _, tc := range []struct {
@@ -91,6 +91,25 @@ func TestSoftmax(t *testing.T) {
 			if got := softmax(tc.input); !mat.EqualApprox(got, tc.want, epsilon) {
 				t.Errorf("softmax(%v) = %v, want %v", tc.input.RawMatrix().Data, got.RawMatrix().Data, tc.want.RawMatrix().Data)
 			}
+		}
+	}
+}
+
+func TestInference(t *testing.T) {
+	type Input struct {
+		x, w, b *mat.Dense
+	}
+	for n, tc := range []struct {
+		input Input
+		want  *mat.Dense
+	}{
+		{
+			input: Input{x: mat.NewDense(2, 3, []float64{-1, -5, 0, 0, 0, 0}), w: mat.NewDense(3, 2, []float64{1, 0, 0, 1, 0, 0}), b: mat.NewDense(2, 1, []float64{1, 2})},
+			want:  mat.NewDense(2, 2, []float64{0.5, 0.0474, 0.7310, 0.8808}),
+		},
+	} {
+		if got := inference(tc.input.x, tc.input.w, tc.input.b); !mat.EqualApprox(got, tc.want, epsilon) {
+			t.Errorf("inference with input No. %v\n Got:\n%v\n\n Want:\n%v\n\n", n+1, mat.Formatted(got), mat.Formatted(tc.want))
 		}
 	}
 }

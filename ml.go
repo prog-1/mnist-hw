@@ -48,15 +48,15 @@ func Train(epochCount int, x, labels *mat.Dense, lrw, lrb float64) (w, b *mat.De
 
 // Returns 10 probabilities for each image, representing probability of each image being each digit.
 // Dims(rows x cols): x - N x M, w - M x 10, b - 10 x 1, predictions - N x 10
-func inference(x, w, b *mat.Dense) (predictions *mat.Dense) {
-	predictions = mat.NewDense(1, 1, nil) // TODO: Test whether it is necessary
-	predictions.Mul(x, w)                 // (N x M) * (M x 10) = (N x 10)
+func inference(x, w, b *mat.Dense) *mat.Dense {
+	var predictions mat.Dense
+	predictions.Mul(x, w) // (N x M) * (M x 10) = (N x 10)
 	// predictions.Add(predictions, biases)// (N x 10) + (10 x 1) = panic
 	predictions.Apply(func(_, j int, v float64) float64 {
 		return v + b.At(j, 0)
-	}, predictions)
-	predictions.Apply(sigmoid, predictions)
-	return predictions
+	}, &predictions)
+	predictions.Apply(sigmoid, &predictions)
+	return &predictions
 }
 
 func sigmoid(_, _ int, v float64) float64 {
