@@ -90,6 +90,54 @@ func TestConvertLabels(t *testing.T) {
 	}
 }
 
+func TestConvertPrediction(t *testing.T) {
+	for n, tc := range []struct {
+		input     *mat.Dense
+		want      int
+		mustPanic bool
+	}{
+		// Single max
+		{
+			input:     mat.NewDense(10, 1, []float64{0.95, 0.05, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1}),
+			want:      0,
+			mustPanic: false,
+		},
+		// Multiple max
+		{
+			input:     mat.NewDense(10, 1, []float64{0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1}),
+			want:      0,
+			mustPanic: false,
+		},
+		// r != 10
+		{
+			input:     mat.NewDense(2, 2, nil),
+			want:      -1,
+			mustPanic: true,
+		},
+		// c != 1
+		{
+			input:     mat.NewDense(10, 2, nil),
+			want:      -1,
+			mustPanic: true,
+		},
+	} {
+		if tc.mustPanic {
+			defer func() {
+				if r, ok := recover().(error); r != nil && !ok {
+					panic(errors.New("panic is not an error"))
+				} else if tc.mustPanic == true && r == nil {
+					t.Errorf("convertPrediction with input No. %v does not panic when it must", n+1)
+				} else if tc.mustPanic == false && r != nil {
+					t.Errorf("convertPrediction with input No. %v panics when it must not", n+1)
+				}
+			}()
+			if got := convertPrediction(tc.input); got != tc.want {
+				t.Errorf("convertPrediction with input No. %v = %v, want %v", n+1, got, tc.want)
+			}
+		}
+	}
+}
+
 func TestSoftmax(t *testing.T) {
 	for n, tc := range []struct {
 		input     *mat.Dense

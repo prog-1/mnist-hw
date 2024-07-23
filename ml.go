@@ -84,16 +84,16 @@ func convertLabels(original *mat.Dense) (converted *mat.Dense) {
 	return converted
 }
 
-// Converts 1 x 10 matrix of chances from 0 or 1 to a digit of the highest chance
+// Converts 10 x 1 matrix of chances from 0 or 1 to a digit of the highest chance
 func convertPrediction(original *mat.Dense) (converted int) {
-	if r, c := original.Dims(); r != 1 || c != digitCount {
-		panic("prediction is not 1 x 10")
+	if r, c := original.Dims(); r != digitCount || c != 1 {
+		panic(errors.New("prediction is not 10 x 1"))
 	}
 
 	var maxChance float64
-	original.Apply(func(i, j int, v float64) float64 {
+	original.Apply(func(i, _ int, v float64) float64 {
 		if v > maxChance {
-			converted = j
+			converted = i
 			maxChance = v
 		}
 		return v
