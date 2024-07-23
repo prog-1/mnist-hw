@@ -8,6 +8,13 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
+/*
+All vectors are represented as column matrices,
+because it subjectively eases perception of vector operations.
+All matrices store vectors as rows,
+because in gonum/mat matrices are stored in row-major order.
+*/
+
 const (
 	digitCount = 10
 )
@@ -64,12 +71,15 @@ func sigmoid(_, _ int, v float64) float64 {
 }
 
 // Converts original label/digit, into 10 element array of chances. Same size as prediciton.
-// Dimensions: original - 1 x N, converted - N x 10
+// Dimensions: original - N x 1, converted - N x 10
 func convertLabels(original *mat.Dense) (converted *mat.Dense) {
-	N := original.RawMatrix().Cols
+	N, c := original.Dims()
+	if c != 1 {
+		panic(errors.New("original is not a vector"))
+	}
 	converted = mat.NewDense(N, digitCount, nil)
 	for i := 0; i < N; i++ {
-		converted.Set(i, int(original.At(0, i)), 1)
+		converted.Set(i, int(original.At(i, 0)), 1)
 	}
 	return converted
 }

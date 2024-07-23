@@ -28,7 +28,7 @@ func TestSigmoid(t *testing.T) {
 }
 
 func TestSoftmax(t *testing.T) {
-	for _, tc := range []struct {
+	for n, tc := range []struct {
 		input     *mat.Dense
 		want      *mat.Dense
 		mustPanic bool
@@ -81,9 +81,9 @@ func TestSoftmax(t *testing.T) {
 				if r, ok := recover().(error); r != nil && !ok {
 					panic(errors.New("panic is not an error"))
 				} else if tc.mustPanic == true && r == nil {
-					t.Errorf("softmax(%v) does not panic when it must", tc.input)
+					t.Errorf("softmax with input No. %v does not panic when it must", n)
 				} else if tc.mustPanic == false && r != nil {
-					t.Errorf("softmax(%v) panics when it must not", tc.input)
+					t.Errorf("softmax with input No. %v panics when it must not", n)
 				}
 			}()
 			_ = softmax(tc.input)
@@ -110,6 +110,50 @@ func TestInference(t *testing.T) {
 	} {
 		if got := inference(tc.input.x, tc.input.w, tc.input.b); !mat.EqualApprox(got, tc.want, epsilon) {
 			t.Errorf("inference with input No. %v\n Got:\n%v\n\n Want:\n%v\n\n", n+1, mat.Formatted(got), mat.Formatted(tc.want))
+		}
+	}
+}
+
+func TestConvertLabels(t *testing.T) {
+	for n, tc := range []struct {
+		input     *mat.Dense
+		want      *mat.Dense
+		mustPanic bool
+	}{
+		// Single label
+		{
+			input:     mat.NewDense(1, 1, []float64{0}),
+			want:      mat.NewDense(1, 10, []float64{1, 0, 0, 0, 0, 0, 0, 0, 0, 0}),
+			mustPanic: false,
+		},
+		// Multiple labels
+		{
+			input: mat.NewDense(3, 1, []float64{0, 1, 2}),
+			want: mat.NewDense(3, 10, []float64{1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+				0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+				0, 0, 1, 0, 0, 0, 0, 0, 0, 0}),
+			mustPanic: false,
+		},
+		// Input dimension mismatch
+		{
+			input:     mat.NewDense(2, 2, nil),
+			want:      nil,
+			mustPanic: true,
+		},
+	} {
+		if tc.mustPanic {
+			defer func() {
+				if r, ok := recover().(error); r != nil && !ok {
+					panic(errors.New("panic is not an error"))
+				} else if tc.mustPanic == true && r == nil {
+					t.Errorf("convertLabels with input No. %v does not panic when it must", n)
+				} else if tc.mustPanic == false && r != nil {
+					t.Errorf("convertLabels with input No. %v panics when it must not", n)
+				}
+			}()
+			if got := convertLabels(tc.input); !mat.EqualApprox(got, tc.want, epsilon) {
+				t.Errorf("convertLabels with input No. %v\n\n Got:%v\n\n Want:\n%v\n\n", n, mat.Formatted(got), mat.Formatted(tc.want))
+			}
 		}
 	}
 }
