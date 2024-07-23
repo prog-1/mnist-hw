@@ -103,17 +103,15 @@ func convertPrediction(original *mat.Dense) (converted int) {
 }
 
 // Returns gradient of the loss function, i.e. derivatives of all the weights and biases.
-// Dimensions(rows x columns): pixels - N x 784, labels - N x 10, predictions - N x 10, dw - 784 x 10, db - 1 x 10
-func dCost(pixels, labels, predictions *mat.Dense) (dw, db *mat.Dense) {
-	_, pixelCount := pixels.Dims()
-	dw, db = mat.NewDense(pixelCount, digitCount, nil), mat.NewDense(1, digitCount, nil)
-	// RowCount, ColCount := pixels.Dims()
-	imageCount, _ := pixels.Dims()
-	diff := mat.NewDense(imageCount, digitCount, nil)
+// Dimensions(rows x columns): x - N x 784, labels - N x 10, predictions - N x 10, dw - 784 x 10, db - 10 x 1
+func dCost(x, labels, predictions *mat.Dense) (dw, db *mat.Dense) {
+	imageCount, pixelCount := x.Dims()
+	dw, db = mat.NewDense(pixelCount, digitCount, nil), mat.NewDense(digitCount, 1, nil)
+	diff := mat.NewDense(imageCount, digitCount, nil) // N x 10
 
 	diff.Sub(predictions, convertLabels(labels))
 
-	dw.Mul(pixels.T(), diff) // dw = Xt * diff -- 784 x 10
+	dw.Mul(x.T(), diff) // dw = Xt * diff -- (784xN) * (Nx10) = 784 x 10
 	dw.Scale(2/float64(imageCount), dw)
 
 	tmpdb := make([]float64, digitCount)
