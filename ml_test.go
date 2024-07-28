@@ -152,51 +152,106 @@ func TestDCost(t *testing.T) {
 		dw, db *mat.Dense
 	}
 	for n, tc := range []struct {
-		input     Input
-		want      Result
-		mustPanic bool
+		input        Input
+		want         Result
+		panicMessage string // "" if no panic
 	}{
-		// Single item. Fully correct prediction.
+		// 1. Single item. Fully correct prediction.
 		{
 			input: Input{
 				x:           mat.NewDense(1, 1, []float64{1}),
 				labels:      mat.NewDense(1, 1, []float64{1}),
 				predictions: mat.NewDense(1, 10, []float64{0, 1, 0, 0, 0, 0, 0, 0, 0, 0}),
 			},
-			// diff(1 x 10) = predictions - convertLabels(labels) =
-			// = (1 x 10) - (1 x 10) =
-			// = {0, 1, 0, 0, 0, 0, 0, 0, 0, 0} - {0, 1, 0, 0, 0, 0, 0, 0, 0, 0} =
-			// = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-			//
-			// dw(1 x 10) = x.T() * diff = (1 x 1) * (1 x 10) = (1 x 10) =
-			// = {1} * {0, 0, 0, 0, 0, 0, 0, 0, 0, 0} =
-			// = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-			//
-			// 2\n * {0, 0, 0, 0, 0, 0, 0, 0, 0, 0} =
-			// = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-			//
-			//
-			// db - 10 x 1
-			// db[0] = diff[0] = 0
-			// db(10 x 1) = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, but vertical
 			want: Result{
 				dw: mat.NewDense(1, 10, []float64{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}),
 				db: mat.NewDense(10, 1, []float64{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}),
 			},
-			mustPanic: false,
 		},
-		// xN != labelsN
-		// xN != predictionsN
-		//
+		// 2. Single item. Fully incorrect prediction.
+		{
+			input: Input{
+				x:           mat.NewDense(1, 1, []float64{1}),
+				labels:      mat.NewDense(1, 1, []float64{0}),
+				predictions: mat.NewDense(1, 10, []float64{0, 1, 1, 1, 1, 1, 1, 1, 1, 1}),
+			},
+			// diff(1 x 10) = predictions - convertLabels(labels) =
+			// = (1 x 10) - (1 x 10) =
+			// = {0, 1, 1, 1, 1, 1, 1, 1, 1, 1} - {1, 0, 0, 0, 0, 0, 0, 0, 0, 0} =
+			// = {-1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
+			//
+			// dw(1 x 10) = x.T() * diff = (1 x 1) * (1 x 10) = (1 x 10) =
+			// = {1} * {-1, 1, 1, 1, 1, 1, 1, 1, 1, 1} =
+			// = {-1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
+			//
+			// 2\1 * {-1, 1, 1, 1, 1, 1, 1, 1, 1, 1} =
+			// = {-2, 2, 2, 2, 2, 2, 2, 2, 2, 2}
+			//
+			//
+			// db - 10 x 1
+			// db[0] = diff[0] = 0
+			// db(10 x 1) = {-1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, but vertical'
+			// 2/1 * {-1, 1, 1, 1, 1, 1, 1, 1, 1, 1} =
+			// = {-2, 2, 2, 2, 2, 2, 2, 2, 2, 2}
+			want: Result{
+				dw: mat.NewDense(1, 10, []float64{-2, 2, 2, 2, 2, 2, 2, 2, 2, 2}),
+				db: mat.NewDense(10, 1, []float64{-2, 2, 2, 2, 2, 2, 2, 2, 2, 2}),
+			},
+		},
+		// 3. xN != labelsN -> panic
+		{
+			input: Input{
+				x:           mat.NewDense(2, 1, nil),
+				labels:      mat.NewDense(1, 1, nil),
+				predictions: mat.NewDense(1, 10, nil),
+			},
+			panicMessage: "incorrect dimenions of labels",
+		},
+		// 4. labels1 !+ 1 -> panic
+		{
+			input: Input{
+				x:      mat.NewDense(1, 1, nil),
+				labels: mat.NewDense(1, 2, nil),
+			},
+			panicMessage: "incorrect dimenions of labels",
+		},
+		// 5. labels1 != 1 -> panic
+		{
+			input: Input{
+				x:      mat.NewDense(1, 1, nil),
+				labels: mat.NewDense(1, 2, nil),
+			},
+			panicMessage: "incorrect dimenions of labels",
+		},
+		// 6. predictionsN != N -> panic
+		{
+			input: Input{
+				x:           mat.NewDense(1, 1, nil),
+				labels:      mat.NewDense(1, 1, nil),
+				predictions: mat.NewDense(1, 1, nil),
+			},
+			panicMessage: "incorrect dimenions of predictions",
+		},
+		// 7. predictions10 != 10 -> panic
+		{
+			input: Input{
+				x:           mat.NewDense(1, 1, nil),
+				labels:      mat.NewDense(1, 1, nil),
+				predictions: mat.NewDense(1, 2, nil),
+			},
+			panicMessage: "incorrect dimenions of predictions",
+		},
 	} {
-		if tc.mustPanic {
+		if tc.panicMessage != "" { // TODO: Figure out why tests are only working under this if case
 			defer func() {
-				if r, ok := recover().(error); r != nil && !ok {
+				if err, ok := recover().(error); err != nil && !ok {
 					panic(errors.New("panic is not an error"))
-				} else if tc.mustPanic == true && r == nil {
-					t.Errorf("dCost with input No. %v does not panic when it must", n+1)
-				} else if tc.mustPanic == false && r != nil {
-					t.Errorf("dCost with input No. %v panics when it must not", n+1)
+				} else if tc.panicMessage != "" && err == nil {
+					t.Errorf("dCost(input %v) does not panic when it must panic with \"%v\"", n+1, tc.panicMessage)
+				} else if tc.panicMessage == "" && err != nil {
+					t.Errorf("dCost(input %v), when it must not panic, does so with \"%v\"", n+1, err)
+				} else if err.Error() != tc.panicMessage {
+					t.Errorf("dCost(input %v) panic message is \"%v\", want \"%v\"", n+1, err, tc.panicMessage)
 				}
 			}()
 			_, _ = dCost(tc.input.x, tc.input.labels, tc.input.predictions)

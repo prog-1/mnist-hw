@@ -18,6 +18,10 @@ All matrices store vectors as rows,
 because in gonum/mat matrices are stored in row-major order.
 */
 
+// TODO:
+// 1. Vectors as row matrices
+// 2. Panic message verification
+
 const (
 	digitCount = 10
 )
