@@ -9,8 +9,11 @@ import (
 )
 
 /*
-All vectors are represented as column matrices,
+All vectors are represented as single column matrices,
 because it subjectively eases perception of vector operations.
+// Now I know that it is a bad idea since
+// representation of vectors as single row matrices
+// is easieir to perceive in code.
 All matrices store vectors as rows,
 because in gonum/mat matrices are stored in row-major order.
 */
@@ -103,14 +106,20 @@ func convertPrediction(original *mat.Dense) (converted int) {
 }
 
 // Returns gradient of the loss function, i.e. derivatives of all the weights and biases.
-// Dimensions(rows x columns): x - N x 784, labels - N x 10, predictions - N x 10, dw - 784 x 10, db - 10 x 1
+// Dimensions(rows x columns): x - N x 784, labels - N x 1, predictions - N x 10, dw - 784 x 10, db - 10 x 1
 func dCost(x, labels, predictions *mat.Dense) (dw, db *mat.Dense) {
 	imageCount, pixelCount := x.Dims()
-	dw, db = mat.NewDense(pixelCount, digitCount, nil), mat.NewDense(digitCount, 1, nil)
-	diff := mat.NewDense(imageCount, digitCount, nil) // N x 10
+	// Verifying input dimensions
+	if lN, l1 := labels.Dims(); lN != imageCount || l1 != 1 {
+		panic(errors.New("incorrect dimenions of labels"))
+	} else if pN, p10 := predictions.Dims(); pN != imageCount || p10 != digitCount {
+		panic(errors.New("incorrect dimenions of predictions"))
+	}
 
+	diff := mat.NewDense(imageCount, digitCount, nil) // N x 10
 	diff.Sub(predictions, convertLabels(labels))
 
+	dw = mat.NewDense(pixelCount, digitCount, nil)
 	dw.Mul(x.T(), diff) // dw = Xt * diff -- (784xN) * (Nx10) = 784 x 10
 	dw.Scale(2/float64(imageCount), dw)
 
@@ -118,7 +127,7 @@ func dCost(x, labels, predictions *mat.Dense) (dw, db *mat.Dense) {
 	for i := range tmpdb {
 		tmpdb[i] = mat.Sum(diff.ColView(i))
 	}
-	db = mat.NewDense(1, digitCount, tmpdb)
+	db = mat.NewDense(digitCount, 1, tmpdb)
 	db.Scale(2/float64(imageCount), db)
 
 	return dw, db

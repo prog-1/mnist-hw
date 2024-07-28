@@ -86,7 +86,7 @@ func TestConvertLabels(t *testing.T) {
 			_ = convertLabels(tc.input)
 		} else {
 			if got := convertLabels(tc.input); !mat.EqualApprox(got, tc.want, epsilon) {
-				t.Errorf("convertLabels with input No. %v\n\n Got:%v\n\n Want:\n%v\n\n", n+1, mat.Formatted(got), mat.Formatted(tc.want))
+				t.Errorf("convertLabels with input No. %v\n\n Got:\n%v\n\n Want:\n%v\n\n", n+1, mat.Formatted(got), mat.Formatted(tc.want))
 			}
 		}
 	}
@@ -128,7 +128,7 @@ func TestConvertPrediction(t *testing.T) {
 				if r, ok := recover().(error); r != nil && !ok {
 					panic(errors.New("panic is not an error"))
 				} else if tc.mustPanic == true && r == nil {
-					t.Errorf("convertPrediction with input No. %v does not panic when it must", n+1)
+					t.Errorf("convetPrediction with input No. %v does not panic when it must", n+1)
 				} else if tc.mustPanic == false && r != nil {
 					t.Errorf("convertPrediction with input No. %v panics when it must not", n+1)
 				}
@@ -142,6 +142,75 @@ func TestConvertPrediction(t *testing.T) {
 	}
 }
 
+func TestDCost(t *testing.T) {
+	type Input struct {
+		// x - N x M, labels - N x 1, predictions - N x 10
+		x, labels, predictions *mat.Dense
+	}
+	type Result struct {
+		// dw - N x 10, db - 10 x 1
+		dw, db *mat.Dense
+	}
+	for n, tc := range []struct {
+		input     Input
+		want      Result
+		mustPanic bool
+	}{
+		// Single item. Fully correct prediction.
+		{
+			input: Input{
+				x:           mat.NewDense(1, 1, []float64{1}),
+				labels:      mat.NewDense(1, 1, []float64{1}),
+				predictions: mat.NewDense(1, 10, []float64{0, 1, 0, 0, 0, 0, 0, 0, 0, 0}),
+			},
+			// diff(1 x 10) = predictions - convertLabels(labels) =
+			// = (1 x 10) - (1 x 10) =
+			// = {0, 1, 0, 0, 0, 0, 0, 0, 0, 0} - {0, 1, 0, 0, 0, 0, 0, 0, 0, 0} =
+			// = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+			//
+			// dw(1 x 10) = x.T() * diff = (1 x 1) * (1 x 10) = (1 x 10) =
+			// = {1} * {0, 0, 0, 0, 0, 0, 0, 0, 0, 0} =
+			// = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+			//
+			// 2\n * {0, 0, 0, 0, 0, 0, 0, 0, 0, 0} =
+			// = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+			//
+			//
+			// db - 10 x 1
+			// db[0] = diff[0] = 0
+			// db(10 x 1) = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, but vertical
+			want: Result{
+				dw: mat.NewDense(1, 10, []float64{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}),
+				db: mat.NewDense(10, 1, []float64{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}),
+			},
+			mustPanic: false,
+		},
+		// xN != labelsN
+		// xN != predictionsN
+		//
+	} {
+		if tc.mustPanic {
+			defer func() {
+				if r, ok := recover().(error); r != nil && !ok {
+					panic(errors.New("panic is not an error"))
+				} else if tc.mustPanic == true && r == nil {
+					t.Errorf("dCost with input No. %v does not panic when it must", n+1)
+				} else if tc.mustPanic == false && r != nil {
+					t.Errorf("dCost with input No. %v panics when it must not", n+1)
+				}
+			}()
+			_, _ = dCost(tc.input.x, tc.input.labels, tc.input.predictions)
+		} else {
+			var got Result
+			got.dw, got.db = dCost(tc.input.x, tc.input.labels, tc.input.predictions)
+			if !mat.EqualApprox(got.dw, tc.want.dw, epsilon) {
+				t.Errorf("dCost(input %v).dw\n\n Got:\n%v\n\n Want:\n%v\n\n", n+1, mat.Formatted(got.dw), mat.Formatted(tc.want.dw))
+			} else if !mat.EqualApprox(got.db, tc.want.db, epsilon) {
+				t.Errorf("dCost(input %v).db\n\n Got:\n%v\n\n Want:\n%v\n\n", n+1, mat.Formatted(got.db), mat.Formatted(tc.want.db))
+			}
+		}
+	}
+}
 func TestSoftmax(t *testing.T) {
 	for n, tc := range []struct {
 		input     *mat.Dense
