@@ -9,13 +9,8 @@ import (
 )
 
 /*
-All vectors are represented as single column matrices,
-because it subjectively eases perception of vector operations.
-// Now I know that it is a bad idea since
-// representation of vectors as single row matrices
-// is easieir to perceive in code.
-All matrices store vectors as rows,
-because in gonum/mat matrices are stored in row-major order.
+All vectors are single row matrices, because it is easier to write such in code.
+All matrices store vectors as rows, because in gonum/mat matrices are stored in row-major order.
 */
 
 // TODO:
@@ -29,7 +24,7 @@ const (
 // Creates a handwritten digit recognition machine learning model trained on the input images and labels.
 // The x matrix contains pixels. Rows are all pixels of an image and cols are pixels with the same position of all images.
 // The matrix called labels is a vector containing the actual digits that is depicted on the image with the same index.
-// Dims(rows x cols): x - N x M, labels - N x 1, where N - image count, M - pixel count for a single image.
+// Dims(rows x cols): x - N x M, labels - 1 x N, where N - image count, M - pixel count for a single image.
 // Values w, b, lrw and lrb stand for weights, biases, learning rate weights and learning rate biases.
 func Train(epochCount int, x, labels *mat.Dense, lrw, lrb float64) (w, b *mat.Dense, err error) {
 	// The reason behind calling the matrix with pixels 'x' and not 'pixels' is for versitality if the inference funciton,
@@ -37,13 +32,13 @@ func Train(epochCount int, x, labels *mat.Dense, lrw, lrb float64) (w, b *mat.De
 
 	// Asserting whether dimensions of the input matrices are appropriate
 	imageCount, pixelCount := x.Dims()
-	if r, c := labels.Dims(); r != imageCount || c != 1 {
-		return nil, nil, fmt.Errorf("labels.Dims() = %v, %v, want = %v, 1", r, c, imageCount)
+	if r, c := labels.Dims(); r != 1 || c != imageCount {
+		return nil, nil, fmt.Errorf("labels.Dims() = %v, %v, want = 1, %v", r, c, imageCount)
 	}
 
-	//w - M x 10 , dw - M x 10, b - 10 x 1, db - 10 x 1
+	//w - M x 10 , dw - M x 10, b - 1 x 10, db - 1 x 10
 	w = mat.NewDense(pixelCount, digitCount, nil) // w - M x 10, initialized with zeroes
-	b = mat.NewDense(digitCount, 1, nil)
+	b = mat.NewDense(1, digitCount, nil)
 	// The decision to use column vectors in justified by the absence of the necessity to transpose it,
 	// while performing matrix-vector multiplication.
 
@@ -61,11 +56,11 @@ func Train(epochCount int, x, labels *mat.Dense, lrw, lrb float64) (w, b *mat.De
 }
 
 // Returns 10 probabilities for each image, representing probability of each image being each digit.
-// Dims(rows x cols): x - N x M, w - M x 10, b - 10 x 1, predictions - N x 10
+// Dims(rows x cols): x - N x M, w - M x 10, b - 1 x 10, predictions - N x 10
 func inference(x, w, b *mat.Dense) *mat.Dense {
 	var predictions mat.Dense
 	predictions.Mul(x, w) // (N x M) * (M x 10) = (N x 10)
-	// predictions.Add(predictions, biases)// (N x 10) + (10 x 1) = panic
+	// predictions.Add(predictions, biases)// (N x 10) + (1 x 10) = panic
 	predictions.Apply(func(_, j int, v float64) float64 {
 		return v + b.At(j, 0)
 	}, &predictions)
@@ -78,29 +73,29 @@ func sigmoid(_, _ int, v float64) float64 {
 }
 
 // Converts original label/digit, into 10 element array of chances. Same size as prediciton.
-// Dimensions: original - N x 1, converted - N x 10
+// Dimensions: original - 1 x N, converted - N x 10
 func convertLabels(original *mat.Dense) (converted *mat.Dense) {
-	N, c := original.Dims()
-	if c != 1 {
-		panic(errors.New("original is not a vector"))
+	r, N := original.Dims()
+	if r != 1 {
+		panic(errors.New("original is not a row vector"))
 	}
 	converted = mat.NewDense(N, digitCount, nil)
 	for i := 0; i < N; i++ {
-		converted.Set(i, int(original.At(i, 0)), 1)
+		converted.Set(i, int(original.At(0, i)), 1)
 	}
 	return converted
 }
 
-// Converts 10 x 1 matrix of chances from 0 or 1 to a digit of the highest chance
+// Converts 1 x 10 matrix of chances from 0 or 1 to a digit of the highest chance
 func convertPrediction(original *mat.Dense) (converted int) {
-	if r, c := original.Dims(); r != digitCount || c != 1 {
-		panic(errors.New("prediction is not 10 x 1"))
+	if r, c := original.Dims(); r != 1 || c != digitCount {
+		panic(errors.New("prediction is not 1 x 10"))
 	}
 
 	var maxChance float64
-	original.Apply(func(i, _ int, v float64) float64 {
+	original.Apply(func(_, j int, v float64) float64 {
 		if v > maxChance {
-			converted = i
+			converted = j
 			maxChance = v
 		}
 		return v
@@ -137,10 +132,10 @@ func dCost(x, labels, predictions *mat.Dense) (dw, db *mat.Dense) {
 	return dw, db
 }
 
-// xTest - N x 784, yTest - N x 1, w = 784 x 10, b - 1 x 10,
-func accuracy(xTest, yTest, w, b *mat.Dense) float64 {
-	predictions := inference(xTest, w, b)   // N x 10
-	convertedLabels := convertLabels(yTest) // N x 10
+// x - N x 784, labels - N x 1, w = 784 x 10, b - 1 x 10
+func accuracy(x, labels, w, b *mat.Dense) float64 {
+	predictions := inference(x, w, b)        // N x 10
+	convertedLabels := convertLabels(labels) // N x 10
 
 	// Converting predicitons into matrix with 1 and 0:
 	predictions.Apply(func(i, j int, v float64) float64 {
@@ -172,26 +167,26 @@ func accuracy(xTest, yTest, w, b *mat.Dense) float64 {
 // Row input vector will be transposed.
 func softmax(vector *mat.Dense) (probabilities *mat.Dense) {
 	r, c := vector.Dims()
-	if c != 1 {
+	if r != 1 {
 		// Working only with column vectors
 		vector = mat.DenseCopyOf(vector.T())
 		r, c = c, r
 	}
-	if c != 1 {
+	if r != 1 {
 		// Throwing error instead of string for compatibility
 		// with the error-handling code that uses errors package.
-		panic(errors.New("softmax argument must be a vector, not any other matrix"))
+		panic(errors.New("softmax argument is not a vector"))
 	}
 
 	var denominator float64
-	for i := 0; i < r; i++ {
-		denominator += math.Exp(vector.At(i, 0))
+	for i := 0; i < c; i++ {
+		denominator += math.Exp(vector.At(0, i))
 	}
 
-	probabilities = mat.NewDense(r, 1, nil)
+	probabilities = mat.NewDense(1, c, nil)
 	probabilities.Apply(
-		func(i, _ int, v float64) float64 {
-			return math.Exp(vector.At(i, 0)) / denominator
+		func(_, i int, v float64) float64 {
+			return math.Exp(vector.At(0, i)) / denominator
 		}, probabilities)
 
 	return probabilities

@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"image/color"
 	"log"
+	"os"
+	"os/exec"
+	"runtime"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -48,10 +51,25 @@ func (a *App) Update() error {
 	} else if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
 		a.screenBuffer.Clear()
 		a.resetMousePrevCoord()
-		ClearConsole()
+		clearConsole()
 	}
 	a.updateMousePrevCoord()
 	return nil
+}
+
+func clearConsole() {
+	// Source: https://stackoverflow.com/questions/22891644/how-can-i-clear-the-terminal-screen-in-go
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "linux":
+		cmd = exec.Command("clear") // WARNING: Untested by me
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "cls")
+	default:
+		return
+	}
+	cmd.Stdout = os.Stdout
+	cmd.Run()
 }
 
 func (a *App) Draw(screen *ebiten.Image) {

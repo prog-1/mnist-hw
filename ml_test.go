@@ -60,7 +60,7 @@ func TestConvertLabels(t *testing.T) {
 		},
 		// Multiple labels
 		{
-			input: mat.NewDense(3, 1, []float64{0, 1, 2}),
+			input: mat.NewDense(1, 3, []float64{0, 1, 2}),
 			want: mat.NewDense(3, 10, []float64{1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 				0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
 				0, 0, 1, 0, 0, 0, 0, 0, 0, 0}),
@@ -100,13 +100,13 @@ func TestConvertPrediction(t *testing.T) {
 	}{
 		// Single max
 		{
-			input:     mat.NewDense(10, 1, []float64{0.05, 0.95, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1}),
+			input:     mat.NewDense(1, 10, []float64{0.05, 0.95, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1}),
 			want:      1,
 			mustPanic: false,
 		},
 		// Multiple max
 		{
-			input:     mat.NewDense(10, 1, []float64{0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1}),
+			input:     mat.NewDense(1, 10, []float64{0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1}),
 			want:      0,
 			mustPanic: false,
 		},
@@ -118,7 +118,7 @@ func TestConvertPrediction(t *testing.T) {
 		},
 		// c != 1
 		{
-			input:     mat.NewDense(10, 2, nil),
+			input:     mat.NewDense(2, 10, nil),
 			want:      -1,
 			mustPanic: true,
 		},
@@ -266,6 +266,7 @@ func TestDCost(t *testing.T) {
 		}
 	}
 }
+
 func TestSoftmax(t *testing.T) {
 	for n, tc := range []struct {
 		input     *mat.Dense
@@ -274,8 +275,8 @@ func TestSoftmax(t *testing.T) {
 	}{
 		// Column vector with positive values
 		{
-			input: mat.NewDense(3, 1, []float64{1.0, 2.0, 3.0}),
-			want: mat.NewDense(3, 1, []float64{
+			input: mat.NewDense(1, 3, []float64{1.0, 2.0, 3.0}),
+			want: mat.NewDense(1, 3, []float64{
 				math.Exp(1.0) / (math.Exp(1.0) + math.Exp(2.0) + math.Exp(3.0)),
 				math.Exp(2.0) / (math.Exp(1.0) + math.Exp(2.0) + math.Exp(3.0)),
 				math.Exp(3.0) / (math.Exp(1.0) + math.Exp(2.0) + math.Exp(3.0)),
@@ -284,8 +285,8 @@ func TestSoftmax(t *testing.T) {
 		},
 		// Column vector with negative values
 		{
-			input: mat.NewDense(3, 1, []float64{-1.0, 0.0, 1.0}),
-			want: mat.NewDense(3, 1, []float64{
+			input: mat.NewDense(1, 3, []float64{-1.0, 0.0, 1.0}),
+			want: mat.NewDense(1, 3, []float64{
 				math.Exp(-1.0) / (math.Exp(-1.0) + math.Exp(0.0) + math.Exp(1.0)),
 				math.Exp(0.0) / (math.Exp(-1.0) + math.Exp(0.0) + math.Exp(1.0)),
 				math.Exp(1.0) / (math.Exp(-1.0) + math.Exp(0.0) + math.Exp(1.0)),
@@ -294,8 +295,8 @@ func TestSoftmax(t *testing.T) {
 		},
 		// Column vector with all zeroes
 		{
-			input: mat.NewDense(3, 1, []float64{0, 0, 0}),
-			want: mat.NewDense(3, 1, []float64{
+			input: mat.NewDense(1, 3, []float64{0, 0, 0}),
+			want: mat.NewDense(1, 3, []float64{
 				1.0 / 3.0,
 				1.0 / 3.0,
 				1.0 / 3.0,
@@ -305,7 +306,7 @@ func TestSoftmax(t *testing.T) {
 		// Row vector(should be transposed)
 		{
 			input: mat.NewDense(1, 3, []float64{1.0, 2.0, 3.0}),
-			want: mat.NewDense(3, 1, []float64{
+			want: mat.NewDense(1, 3, []float64{
 				math.Exp(1.0) / (math.Exp(1.0) + math.Exp(2.0) + math.Exp(3.0)),
 				math.Exp(2.0) / (math.Exp(1.0) + math.Exp(2.0) + math.Exp(3.0)),
 				math.Exp(3.0) / (math.Exp(1.0) + math.Exp(2.0) + math.Exp(3.0)),
