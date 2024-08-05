@@ -243,27 +243,14 @@ func TestDCost(t *testing.T) {
 			panicMessage: "incorrect dimenions of predictions",
 		},
 	} {
-		if tc.panicMessage != "" { // TODO: Figure out why tests are only working under this if case
-			defer func() {
-				if err, ok := recover().(error); err != nil && !ok {
-					panic(errors.New("panic is not an error"))
-				} else if tc.panicMessage != "" && err == nil {
-					t.Errorf("dCost(input %v) does not panic when it must panic with \"%v\"", n+1, tc.panicMessage)
-				} else if tc.panicMessage == "" && err != nil {
-					t.Errorf("dCost(input %v), when it must not panic, does so with \"%v\"", n+1, err)
-				} else if err.Error() != tc.panicMessage {
-					t.Errorf("dCost(input %v) panic message is \"%v\", want \"%v\"", n+1, err, tc.panicMessage)
-				}
-			}()
-			_, _ = dCost(tc.input.x, tc.input.labels, tc.input.predictions)
-		} else {
-			var got Result
-			got.dw, got.db = dCost(tc.input.x, tc.input.labels, tc.input.predictions)
-			if !mat.EqualApprox(got.dw, tc.want.dw, epsilon) {
-				t.Errorf("dCost(input %v).dw\n\n Got:\n%v\n\n Want:\n%v\n\n", n+1, mat.Formatted(got.dw), mat.Formatted(tc.want.dw))
-			} else if !mat.EqualApprox(got.db, tc.want.db, epsilon) {
-				t.Errorf("dCost(input %v).db\n\n Got:\n%v\n\n Want:\n%v\n\n", n+1, mat.Formatted(got.db), mat.Formatted(tc.want.db))
-			}
+		defer panicCheck(t, n, tc.panicMessage)
+
+		var got Result
+		got.dw, got.db = dCost(tc.input.x, tc.input.labels, tc.input.predictions)
+		if !mat.EqualApprox(got.dw, tc.want.dw, epsilon) {
+			t.Errorf("dCost(input %v).dw\n\n Got:\n%v\n\n Want:\n%v\n\n", n+1, mat.Formatted(got.dw), mat.Formatted(tc.want.dw))
+		} else if !mat.EqualApprox(got.db, tc.want.db, epsilon) {
+			t.Errorf("dCost(input %v).db\n\n Got:\n%v\n\n Want:\n%v\n\n", n+1, mat.Formatted(got.db), mat.Formatted(tc.want.db))
 		}
 	}
 }
@@ -314,22 +301,25 @@ func TestSoftmax(t *testing.T) {
 		{mat.NewDense(2, 2, nil), nil, "softmax argument is not a row vector"},
 	} {
 		t.Run(fmt.Sprintf("Softmax %v", n+1), func(t *testing.T) {
-			defer func() {
-				if r := recover(); r != nil {
-					if err, ok := r.(error); ok && tc.panicMessage != "" {
-						if err.Error() != tc.panicMessage {
-							t.Errorf("softmax with input No. %v panic message is \"%v\", want - \"%v\"", n+1, err, tc.panicMessage)
-						}
-					} else {
-						t.Errorf("softmax with input No. %v panics with unexpected message: %v", n+1, r)
-					}
-				} else if tc.panicMessage != "" {
-					t.Errorf("softmax with input No. %v does not panic when it must", n+1)
-				}
-			}()
+			defer panicCheck(t, n, tc.panicMessage)
 			if got := softmax(tc.input); !mat.EqualApprox(got, tc.want, epsilon) {
 				t.Errorf("softmax with input No. %v\n Got:\n%v\n\n Want:\n%v\n\n", n+1, mat.Formatted(got), mat.Formatted(tc.want))
 			}
 		})
+	}
+}
+
+// Checks if the function panics with the expected message.
+func panicCheck(t *testing.T, n int, panicMessage string) {
+	if r := recover(); r != nil {
+		if err, ok := r.(error); ok && panicMessage != "" {
+			if err.Error() != panicMessage {
+				t.Errorf("softmax with input No. %v panic message is \"%v\", want - \"%v\"", n+1, err, panicMessage)
+			}
+		} else {
+			t.Errorf("softmax with input No. %v panics with unexpected message: %v", n+1, r)
+		}
+	} else if panicMessage != "" {
+		t.Errorf("softmax with input No. %v does not panic when it must", n+1)
 	}
 }
