@@ -23,9 +23,9 @@ const (
 
 // Creates a handwritten digit recognition machine learning model trained on the input images and labels.
 // The x matrix contains pixels. Rows are all pixels of an image and cols are pixels with the same position of all images.
-// The matrix called labels is a vector containing the actual digits that is depicted on the image with the same index.
+// The matrix called labels is a vector containing the actual digits that are depicted on the image with the same index.
 // Dims(rows x cols): x - N x M, labels - 1 x N, where N - image count, M - pixel count for a single image.
-// Values w, b, lrw and lrb stand for weights, biases, learning rate weights and learning rate biases.
+// Variables w, b, lrw and lrb stand for weights, biases, learning rate weights and learning rate biases.
 func Train(epochCount int, x, labels *mat.Dense, lrw, lrb float64) (w, b *mat.Dense, err error) {
 	// The reason behind calling the matrix with pixels 'x' and not 'pixels' is for versitality if the inference funciton,
 	// which can work not only with a digit recognition model
@@ -62,7 +62,7 @@ func inference(x, w, b *mat.Dense) *mat.Dense {
 	predictions.Mul(x, w) // (N x M) * (M x 10) = (N x 10)
 	// predictions.Add(predictions, biases)// (N x 10) + (1 x 10) = panic
 	predictions.Apply(func(_, j int, v float64) float64 {
-		return v + b.At(j, 0)
+		return v + b.At(0, j)
 	}, &predictions)
 	predictions.Apply(sigmoid, &predictions)
 	return &predictions
@@ -105,28 +105,28 @@ func convertPrediction(original *mat.Dense) (converted int) {
 }
 
 // Returns gradient of the loss function, i.e. derivatives of all the weights and biases.
-// Dimensions(rows x columns): x - N x 784, labels - N x 1, predictions - N x 10, dw - 784 x 10, db - 10 x 1
+// Dimensions(rows x columns): x - N x 784, labels - 1 x N, predictions - N x 10, dw - 784 x 10, db - 1 x 10
 func dCost(x, labels, predictions *mat.Dense) (dw, db *mat.Dense) {
 	imageCount, pixelCount := x.Dims()
 	// Verifying input dimensions
-	if lN, l1 := labels.Dims(); lN != imageCount || l1 != 1 {
+	if l1, lN := labels.Dims(); l1 != 1 || lN != imageCount {
 		panic(errors.New("incorrect dimenions of labels"))
 	} else if pN, p10 := predictions.Dims(); pN != imageCount || p10 != digitCount {
 		panic(errors.New("incorrect dimenions of predictions"))
 	}
 
 	diff := mat.NewDense(imageCount, digitCount, nil) // N x 10
-	diff.Sub(predictions, convertLabels(labels))
+	diff.Sub(predictions, convertLabels(labels))      // N x 10 - N x 10 = N x 10
 
-	dw = mat.NewDense(pixelCount, digitCount, nil)
-	dw.Mul(x.T(), diff) // dw = Xt * diff -- (784xN) * (Nx10) = 784 x 10
+	dw = mat.NewDense(pixelCount, digitCount, nil) // 784 x 10
+	dw.Mul(x.T(), diff)                            // dw = Xt * diff -- (784xN) * (Nx10) = 784 x 10
 	dw.Scale(2/float64(imageCount), dw)
 
 	tmpdb := make([]float64, digitCount)
 	for i := range tmpdb {
 		tmpdb[i] = mat.Sum(diff.ColView(i))
 	}
-	db = mat.NewDense(digitCount, 1, tmpdb)
+	db = mat.NewDense(1, digitCount, tmpdb)
 	db.Scale(2/float64(imageCount), db)
 
 	return dw, db
@@ -163,7 +163,7 @@ func accuracy(x, labels, w, b *mat.Dense) float64 {
 
 // Returns vector of the full probability destribution for the input vector elements.
 // Sum of all elements in probabilities = 1.
-// Input vector size - N x 1, probabilities size - N x 1.
+// Input vector size - 1 x N, probabilities size - 1 x N.
 // Row input vector will be transposed.
 func softmax(vector *mat.Dense) (probabilities *mat.Dense) {
 	r, c := vector.Dims()
@@ -175,7 +175,7 @@ func softmax(vector *mat.Dense) (probabilities *mat.Dense) {
 	if r != 1 {
 		// Throwing error instead of string for compatibility
 		// with the error-handling code that uses errors package.
-		panic(errors.New("softmax argument is not a vector"))
+		panic(errors.New("softmax argument is not a row vector"))
 	}
 
 	var denominator float64

@@ -62,7 +62,14 @@ func mnistDataFromReader(r io.Reader) (*mat.Dense, error) {
 		return nil, fmt.Errorf("failed to read data: %v", err)
 	}
 
-	return bytesToMat(count, rows*cols, data), nil
+	switch magic {
+	case 0x803:
+		return bytesToMat(count, rows*cols, data), nil
+	case 0x801:
+		return bytesToMat(1, count, data), nil
+	default:
+		return nil, fmt.Errorf("invalid magic number: %x", magic)
+	}
 }
 
 // Returns matrix of the dimensions specified filled with bytes casted to float64

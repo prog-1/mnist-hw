@@ -61,7 +61,7 @@ func TestMnist(t *testing.T) {
 	} {
 		if got, err := mnistDataFromReader(tc.input); err != nil {
 			if tc.want.err == nil || err.Error() != tc.want.err.Error() {
-				t.Errorf("mnistDataFromReader(tc%v.input) error = %v, wantErr %v", n, err, tc.want.err)
+				t.Errorf("mnistDataFromReader(tc%v.input) error = %v, want error = %v", n, err, tc.want.err)
 			}
 		} else if tc.want.err != nil {
 			t.Errorf("mnistDataFromReader(tc%v.input) expected error, got none", n)
