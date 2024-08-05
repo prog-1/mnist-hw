@@ -83,36 +83,35 @@ func TestConvertLabels(t *testing.T) {
 func TestConvertPrediction(t *testing.T) {
 	for n, tc := range []struct {
 		input        *mat.Dense
-		want         int
+		want         *mat.Dense
 		panicMessage string // "" if no panic
 	}{
 		// Single max
 		{
 			input: mat.NewDense(1, 10, []float64{0.05, 0.95, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1}),
-			want:  1,
+			want:  mat.NewDense(1, 1, []float64{1}),
 		},
 		// Multiple max
 		{
 			input: mat.NewDense(1, 10, []float64{0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1}),
-			want:  0,
+			want:  mat.NewDense(1, 1, []float64{0}),
+		},
+		// Multiple predictions
+		{
+			input: mat.NewDense(2, 10, []float64{0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
+				0.05, 0.95, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1}),
+			want: mat.NewDense(1, 2, []float64{0, 1}),
 		},
 		// r != 10
 		{
 			input:        mat.NewDense(2, 2, nil),
-			want:         -1,
-			panicMessage: "prediction is not 1 x 10",
-		},
-		// c != 1
-		{
-			input:        mat.NewDense(2, 10, nil),
-			want:         -1,
-			panicMessage: "prediction is not 1 x 10",
+			panicMessage: "prediction is not N x 10",
 		},
 	} {
 		t.Run(fmt.Sprintf("convertPrediction %v", n+1), func(t *testing.T) {
 			defer panicCheck(t, n, tc.panicMessage)
-			if got := convertPrediction(tc.input); got != tc.want {
-				t.Errorf("convertPrediction with input No. %v = %v, want %v", n+1, got, tc.want)
+			if got := convertPredictions(tc.input); !mat.EqualApprox(got, tc.want, epsilon) {
+				t.Errorf("convertPrediction(input%v) = %v, want %v", n+1, mat.Formatted(got), mat.Formatted(tc.want))
 			}
 		})
 	}
@@ -231,6 +230,21 @@ func TestDCost(t *testing.T) {
 		})
 	}
 }
+
+// func TestAccuracy(t *testing.T) {
+// 	type Input struct {
+// 		x, labels, w, b *mat.Dense
+// 	}
+// 	for n, tc := range []struct {
+// 		input Input
+// 		want  float64
+// 	}{
+// 		// 1. Single item. Fully correct prediction.
+
+// 	} {
+
+// 	}
+// }
 
 func TestSoftmax(t *testing.T) {
 	for n, tc := range []struct {

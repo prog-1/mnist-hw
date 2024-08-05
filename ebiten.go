@@ -45,7 +45,7 @@ func (a *App) Update() error {
 	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
 		alphas := a.pixelAlphas()
 		fmt.Println(alphas.Dims())
-		a.guess = fmt.Sprint(convertPrediction(inference(alphas, a.W, a.B)))
+		a.guess = fmt.Sprint(convertPredictions(inference(alphas, a.W, a.B)).At(0, 0))
 	} else if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		a.handleDrawing()
 	} else if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
@@ -55,6 +55,11 @@ func (a *App) Update() error {
 	}
 	a.updateMousePrevCoord()
 	return nil
+}
+
+func (a *App) Draw(screen *ebiten.Image) {
+	screen.DrawImage(a.screenBuffer, &ebiten.DrawImageOptions{})
+	ebitenutil.DebugPrint(screen, a.guess)
 }
 
 func clearConsole() {
@@ -70,11 +75,6 @@ func clearConsole() {
 	}
 	cmd.Stdout = os.Stdout
 	cmd.Run()
-}
-
-func (a *App) Draw(screen *ebiten.Image) {
-	screen.DrawImage(a.screenBuffer, &ebiten.DrawImageOptions{})
-	ebitenutil.DebugPrint(screen, a.guess)
 }
 
 func (a *App) updateMousePrevCoord() {

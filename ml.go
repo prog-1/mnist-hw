@@ -75,7 +75,7 @@ func sigmoid(_, _ int, v float64) float64 {
 	return 1 / (1 + math.Exp(-v))
 }
 
-// Converts original label/digit, into 10 element array of chances. Same size as prediciton.
+// Converts original label, into 10 element array of chances. Same size as prediciton.
 // Dimensions: original - 1 x N, converted - N x 10
 func convertLabels(original *mat.Dense) (converted *mat.Dense) {
 	r, N := original.Dims()
@@ -89,22 +89,25 @@ func convertLabels(original *mat.Dense) (converted *mat.Dense) {
 	return converted
 }
 
-// Converts 1 x 10 matrix of chances from 0 or 1 to a digit of the highest chance
-func convertPrediction(original *mat.Dense) (converted int) {
-	if r, c := original.Dims(); r != 1 || c != digitCount {
-		panic(errors.New("prediction is not 1 x 10"))
+// Converts N x 10 matrix of chances from 0 or 1 to a 1 x N matrix of digits of the highest chance.
+func convertPredictions(original *mat.Dense) *mat.Dense {
+	N, cols := original.Dims()
+	if cols != digitCount {
+		panic(errors.New("prediction is not N x 10"))
 	}
 
-	var maxChance float64
-	original.Apply(func(_, j int, v float64) float64 {
-		if v > maxChance {
-			converted = j
-			maxChance = v
+	converted := make([]float64, N)
+	for i := 0; i < N; i++ {
+		maxChance, maxIndex := original.At(i, 0), 0
+		for j := 1; j < digitCount; j++ {
+			if v := original.At(i, j); v > maxChance {
+				maxChance, maxIndex = v, j
+			}
 		}
-		return v
-	}, original)
+		converted[i] = float64(maxIndex)
+	}
 
-	return converted
+	return mat.NewDense(1, N, converted)
 }
 
 // Returns gradient of the loss function, i.e. derivatives of all the weights and biases.
@@ -135,33 +138,20 @@ func dCost(x, labels, predictions *mat.Dense) (dw, db *mat.Dense) {
 	return dw, db
 }
 
-// x - N x 784, labels - N x 1, w = 784 x 10, b - 1 x 10
-func accuracy(x, labels, w, b *mat.Dense) float64 {
-	predictions := inference(x, w, b)        // N x 10
-	convertedLabels := convertLabels(labels) // N x 10
+// Returns percentage of correct predictions.
+// x - N x 784, labels - 1 x N, w = 784 x 10, b - 1 x 10
+func Accuracy(x, labels, w, b *mat.Dense) float64 {
+	predictions := convertPredictions(inference(x, w, b)) // 1 x N
 
-	// Converting predicitons into matrix with 1 and 0:
-	predictions.Apply(func(i, j int, v float64) float64 {
-		if predictions.At(i, j) > 0.5 {
-			return 1
-		} else {
-			return 0
-		}
-	}, predictions)
-
-	var correctCount float64
-	equal := func(a, b, epsilon float64) bool {
-		return math.Abs(a-b) < epsilon
-	}
-	r, c := predictions.Dims()
-	for i := 0; i < r; i++ {
-		for j := 0; j < c; j++ {
-			if equal(predictions.At(i, j), convertedLabels.At(i, j), 1e-10) {
-				correctCount++
-			}
+	N := predictions.RawMatrix().Cols
+	var correctCount int
+	for i := 0; i < N; i++ {
+		if predictions.At(0, i) == predictions.At(0, i) {
+			correctCount++
 		}
 	}
-	return float64(r) / correctCount
+
+	return float64(correctCount) / float64(N)
 }
 
 // Returns vector of the full probability destribution for the input vector elements.

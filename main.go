@@ -15,7 +15,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(accuracy(xTest, yTest, w, b))
+	fmt.Println(Accuracy(xTest, yTest, w, b))
 	RunDrawing(500, w, b)
-	accuracy(xTest, yTest, w, b)
 }
