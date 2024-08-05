@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"testing"
@@ -49,15 +48,14 @@ func TestSigmoid(t *testing.T) {
 
 func TestConvertLabels(t *testing.T) {
 	for n, tc := range []struct {
-		input     *mat.Dense
-		want      *mat.Dense
-		mustPanic bool
+		input        *mat.Dense
+		want         *mat.Dense
+		panicMessage string // "" if no panic
 	}{
 		// Single label
 		{
-			input:     mat.NewDense(1, 1, []float64{0}),
-			want:      mat.NewDense(1, 10, []float64{1, 0, 0, 0, 0, 0, 0, 0, 0, 0}),
-			mustPanic: false,
+			input: mat.NewDense(1, 1, []float64{0}),
+			want:  mat.NewDense(1, 10, []float64{1, 0, 0, 0, 0, 0, 0, 0, 0, 0}),
 		},
 		// Multiple labels
 		{
@@ -65,80 +63,53 @@ func TestConvertLabels(t *testing.T) {
 			want: mat.NewDense(3, 10, []float64{1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 				0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
 				0, 0, 1, 0, 0, 0, 0, 0, 0, 0}),
-			mustPanic: false,
 		},
 		// Input dimension mismatch
 		{
-			input:     mat.NewDense(2, 2, nil),
-			want:      nil,
-			mustPanic: true,
+			input:        mat.NewDense(2, 2, nil),
+			want:         nil,
+			panicMessage: "original is not a row vector",
 		},
 	} {
-		if tc.mustPanic {
-			defer func() {
-				if r, ok := recover().(error); r != nil && !ok {
-					panic(errors.New("panic is not an error"))
-				} else if tc.mustPanic == true && r == nil {
-					t.Errorf("convertLabels with input No. %v does not panic when it must", n+1)
-				} else if tc.mustPanic == false && r != nil {
-					t.Errorf("convertLabels with input No. %v panics when it must not", n+1)
-				}
-			}()
-			_ = convertLabels(tc.input)
-		} else {
-			if got := convertLabels(tc.input); !mat.EqualApprox(got, tc.want, epsilon) {
-				t.Errorf("convertLabels with input No. %v\n\n Got:\n%v\n\n Want:\n%v\n\n", n+1, mat.Formatted(got), mat.Formatted(tc.want))
-			}
+		defer panicCheck(t, n, tc.panicMessage)
+		if got := convertLabels(tc.input); !mat.EqualApprox(got, tc.want, epsilon) {
+			t.Errorf("convertLabels with input No. %v\n\n Got:\n%v\n\n Want:\n%v\n\n", n+1, mat.Formatted(got), mat.Formatted(tc.want))
 		}
 	}
 }
 
 func TestConvertPrediction(t *testing.T) {
 	for n, tc := range []struct {
-		input     *mat.Dense
-		want      int
-		mustPanic bool
+		input        *mat.Dense
+		want         int
+		panicMessage string // "" if no panic
 	}{
 		// Single max
 		{
-			input:     mat.NewDense(1, 10, []float64{0.05, 0.95, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1}),
-			want:      1,
-			mustPanic: false,
+			input: mat.NewDense(1, 10, []float64{0.05, 0.95, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1}),
+			want:  1,
 		},
 		// Multiple max
 		{
-			input:     mat.NewDense(1, 10, []float64{0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1}),
-			want:      0,
-			mustPanic: false,
+			input: mat.NewDense(1, 10, []float64{0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1}),
+			want:  0,
 		},
 		// r != 10
 		{
-			input:     mat.NewDense(2, 2, nil),
-			want:      -1,
-			mustPanic: true,
+			input:        mat.NewDense(2, 2, nil),
+			want:         -1,
+			panicMessage: "prediction is not 1 x 10",
 		},
 		// c != 1
 		{
-			input:     mat.NewDense(2, 10, nil),
-			want:      -1,
-			mustPanic: true,
+			input:        mat.NewDense(2, 10, nil),
+			want:         -1,
+			panicMessage: "prediction is not 1 x 10",
 		},
 	} {
-		if tc.mustPanic {
-			defer func() {
-				if r, ok := recover().(error); r != nil && !ok {
-					panic(errors.New("panic is not an error"))
-				} else if tc.mustPanic == true && r == nil {
-					t.Errorf("convetPrediction with input No. %v does not panic when it must", n+1)
-				} else if tc.mustPanic == false && r != nil {
-					t.Errorf("convertPrediction with input No. %v panics when it must not", n+1)
-				}
-			}()
-			_ = convertPrediction(tc.input)
-		} else {
-			if got := convertPrediction(tc.input); got != tc.want {
-				t.Errorf("convertPrediction with input No. %v = %v, want %v", n+1, got, tc.want)
-			}
+		defer panicCheck(t, n, tc.panicMessage)
+		if got := convertPrediction(tc.input); got != tc.want {
+			t.Errorf("convertPrediction with input No. %v = %v, want %v", n+1, got, tc.want)
 		}
 	}
 }
