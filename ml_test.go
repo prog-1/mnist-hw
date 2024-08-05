@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"testing"
 
@@ -269,9 +270,9 @@ func TestDCost(t *testing.T) {
 
 func TestSoftmax(t *testing.T) {
 	for n, tc := range []struct {
-		input     *mat.Dense
-		want      *mat.Dense
-		mustPanic bool
+		input        *mat.Dense
+		want         *mat.Dense
+		panicMessage string // "" if no panic
 	}{
 		// Column vector with positive values
 		{
@@ -281,56 +282,54 @@ func TestSoftmax(t *testing.T) {
 				math.Exp(2.0) / (math.Exp(1.0) + math.Exp(2.0) + math.Exp(3.0)),
 				math.Exp(3.0) / (math.Exp(1.0) + math.Exp(2.0) + math.Exp(3.0)),
 			}),
-			mustPanic: false,
 		},
-		// // Column vector with negative values
-		// {
-		// 	input: mat.NewDense(1, 3, []float64{-1.0, 0.0, 1.0}),
-		// 	want: mat.NewDense(1, 3, []float64{
-		// 		math.Exp(-1.0) / (math.Exp(-1.0) + math.Exp(0.0) + math.Exp(1.0)),
-		// 		math.Exp(0.0) / (math.Exp(-1.0) + math.Exp(0.0) + math.Exp(1.0)),
-		// 		math.Exp(1.0) / (math.Exp(-1.0) + math.Exp(0.0) + math.Exp(1.0)),
-		// 	}),
-		// 	mustPanic: false,
-		// },
-		// // Column vector with all zeroes
-		// {
-		// 	input: mat.NewDense(1, 3, []float64{0, 0, 0}),
-		// 	want: mat.NewDense(1, 3, []float64{
-		// 		1.0 / 3.0,
-		// 		1.0 / 3.0,
-		// 		1.0 / 3.0,
-		// 	}),
-		// 	mustPanic: false,
-		// },
-		// // Row vector(should be transposed)
-		// {
-		// 	input: mat.NewDense(1, 3, []float64{1.0, 2.0, 3.0}),
-		// 	want: mat.NewDense(1, 3, []float64{
-		// 		math.Exp(1.0) / (math.Exp(1.0) + math.Exp(2.0) + math.Exp(3.0)),
-		// 		math.Exp(2.0) / (math.Exp(1.0) + math.Exp(2.0) + math.Exp(3.0)),
-		// 		math.Exp(3.0) / (math.Exp(1.0) + math.Exp(2.0) + math.Exp(3.0)),
-		// 	}),
-		// 	mustPanic: false,
-		// },
-		// //  Matrix with more than one column (should panic)
-		// {mat.NewDense(2, 2, nil), nil, true},
+		// Column vector with negative values
+		{
+			input: mat.NewDense(1, 3, []float64{-1.0, 0.0, 1.0}),
+			want: mat.NewDense(1, 3, []float64{
+				math.Exp(-1.0) / (math.Exp(-1.0) + math.Exp(0.0) + math.Exp(1.0)),
+				math.Exp(0.0) / (math.Exp(-1.0) + math.Exp(0.0) + math.Exp(1.0)),
+				math.Exp(1.0) / (math.Exp(-1.0) + math.Exp(0.0) + math.Exp(1.0)),
+			}),
+		},
+		// Column vector with all zeroes
+		{
+			input: mat.NewDense(1, 3, []float64{0, 0, 0}),
+			want: mat.NewDense(1, 3, []float64{
+				1.0 / 3.0,
+				1.0 / 3.0,
+				1.0 / 3.0,
+			}),
+		},
+		// Row vector(should be transposed)
+		{
+			input: mat.NewDense(1, 3, []float64{1.0, 2.0, 3.0}),
+			want: mat.NewDense(1, 3, []float64{
+				math.Exp(1.0) / (math.Exp(1.0) + math.Exp(2.0) + math.Exp(3.0)),
+				math.Exp(2.0) / (math.Exp(1.0) + math.Exp(2.0) + math.Exp(3.0)),
+				math.Exp(3.0) / (math.Exp(1.0) + math.Exp(2.0) + math.Exp(3.0)),
+			}),
+		},
+		//  Matrix with more than one column (should panic)
+		{mat.NewDense(2, 2, nil), nil, "softmax argument is not a row vector"},
 	} {
-		if tc.mustPanic {
+		t.Run(fmt.Sprintf("Softmax %v", n+1), func(t *testing.T) {
 			defer func() {
-				if r, ok := recover().(error); r != nil && !ok {
-					panic(errors.New("panic is not an error"))
-				} else if tc.mustPanic == true && r == nil {
+				if r := recover(); r != nil {
+					if err, ok := r.(error); ok && tc.panicMessage != "" {
+						if err.Error() != tc.panicMessage {
+							t.Errorf("softmax with input No. %v panic message is \"%v\", want - \"%v\"", n+1, err, tc.panicMessage)
+						}
+					} else {
+						t.Errorf("softmax with input No. %v panics with unexpected message: %v", n+1, r)
+					}
+				} else if tc.panicMessage != "" {
 					t.Errorf("softmax with input No. %v does not panic when it must", n+1)
-				} else if tc.mustPanic == false && r != nil {
-					t.Errorf("softmax with input No. %v panics when it must not", n+1)
 				}
 			}()
-			_ = softmax(tc.input)
-		} else {
 			if got := softmax(tc.input); !mat.EqualApprox(got, tc.want, epsilon) {
 				t.Errorf("softmax with input No. %v\n Got:\n%v\n\n Want:\n%v\n\n", n+1, mat.Formatted(got), mat.Formatted(tc.want))
 			}
-		}
+		})
 	}
 }
