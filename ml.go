@@ -14,9 +14,11 @@ All matrices store vectors as rows, because in gonum/mat matrices are stored in 
 */
 
 // TODO:
-// * Try tangent function out
+// * Test accuracy
 // * Add hidden layer
 // * Add batching
+// * Backpropagations
+// * Try tangent function out
 
 const (
 	digitCount = 10

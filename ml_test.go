@@ -71,10 +71,12 @@ func TestConvertLabels(t *testing.T) {
 			panicMessage: "original is not a row vector",
 		},
 	} {
-		defer panicCheck(t, n, tc.panicMessage)
-		if got := convertLabels(tc.input); !mat.EqualApprox(got, tc.want, epsilon) {
-			t.Errorf("convertLabels with input No. %v\n\n Got:\n%v\n\n Want:\n%v\n\n", n+1, mat.Formatted(got), mat.Formatted(tc.want))
-		}
+		t.Run(fmt.Sprintf("convertLabels %v", n+1), func(t *testing.T) {
+			defer panicCheck(t, n, tc.panicMessage)
+			if got := convertLabels(tc.input); !mat.EqualApprox(got, tc.want, epsilon) {
+				t.Errorf("convertLabels with input No. %v\n\n Got:\n%v\n\n Want:\n%v\n\n", n+1, mat.Formatted(got), mat.Formatted(tc.want))
+			}
+		})
 	}
 }
 
@@ -107,10 +109,12 @@ func TestConvertPrediction(t *testing.T) {
 			panicMessage: "prediction is not 1 x 10",
 		},
 	} {
-		defer panicCheck(t, n, tc.panicMessage)
-		if got := convertPrediction(tc.input); got != tc.want {
-			t.Errorf("convertPrediction with input No. %v = %v, want %v", n+1, got, tc.want)
-		}
+		t.Run(fmt.Sprintf("convertPrediction %v", n+1), func(t *testing.T) {
+			defer panicCheck(t, n, tc.panicMessage)
+			if got := convertPrediction(tc.input); got != tc.want {
+				t.Errorf("convertPrediction with input No. %v = %v, want %v", n+1, got, tc.want)
+			}
+		})
 	}
 }
 
@@ -214,15 +218,17 @@ func TestDCost(t *testing.T) {
 			panicMessage: "incorrect dimenions of predictions",
 		},
 	} {
-		defer panicCheck(t, n, tc.panicMessage)
+		t.Run(fmt.Sprintf("dCost %v", n+1), func(t *testing.T) {
+			defer panicCheck(t, n, tc.panicMessage)
 
-		var got Result
-		got.dw, got.db = dCost(tc.input.x, tc.input.labels, tc.input.predictions)
-		if !mat.EqualApprox(got.dw, tc.want.dw, epsilon) {
-			t.Errorf("dCost(input %v).dw\n\n Got:\n%v\n\n Want:\n%v\n\n", n+1, mat.Formatted(got.dw), mat.Formatted(tc.want.dw))
-		} else if !mat.EqualApprox(got.db, tc.want.db, epsilon) {
-			t.Errorf("dCost(input %v).db\n\n Got:\n%v\n\n Want:\n%v\n\n", n+1, mat.Formatted(got.db), mat.Formatted(tc.want.db))
-		}
+			var got Result
+			got.dw, got.db = dCost(tc.input.x, tc.input.labels, tc.input.predictions)
+			if !mat.EqualApprox(got.dw, tc.want.dw, epsilon) {
+				t.Errorf("dCost(input %v).dw\n\n Got:\n%v\n\n Want:\n%v\n\n", n+1, mat.Formatted(got.dw), mat.Formatted(tc.want.dw))
+			} else if !mat.EqualApprox(got.db, tc.want.db, epsilon) {
+				t.Errorf("dCost(input %v).db\n\n Got:\n%v\n\n Want:\n%v\n\n", n+1, mat.Formatted(got.db), mat.Formatted(tc.want.db))
+			}
+		})
 	}
 }
 

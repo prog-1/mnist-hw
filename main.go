@@ -17,4 +17,5 @@ func main() {
 	}
 	fmt.Println(accuracy(xTest, yTest, w, b))
 	RunDrawing(500, w, b)
+	accuracy(xTest, yTest, w, b)
 }
