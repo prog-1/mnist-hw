@@ -15,6 +15,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(Accuracy(xTest, yTest, w, b))
+	fmt.Println(Accuracy(convertPredictions(inference(xTest, w, b)), yTest))
 	RunDrawing(500, w, b)
 }

@@ -231,20 +231,35 @@ func TestDCost(t *testing.T) {
 	}
 }
 
-// func TestAccuracy(t *testing.T) {
-// 	type Input struct {
-// 		x, labels, w, b *mat.Dense
-// 	}
-// 	for n, tc := range []struct {
-// 		input Input
-// 		want  float64
-// 	}{
-// 		// 1. Single item. Fully correct prediction.
-
-// 	} {
-
-// 	}
-// }
+func TestAccuracy(t *testing.T) {
+	type Input struct {
+		predicitons, labels *mat.Dense
+	}
+	for n, tc := range []struct {
+		input Input
+		want  float64
+	}{
+		// 1. Single item. Fully correct prediction.
+		{
+			input: Input{mat.NewDense(1, 1, []float64{1}), mat.NewDense(1, 1, []float64{1})},
+			want:  1,
+		},
+		// 2. Single item. Fully incorrect prediction.
+		{
+			input: Input{mat.NewDense(1, 1, []float64{0}), mat.NewDense(1, 1, []float64{1})},
+			want:  0,
+		},
+		// 3. Multiple items. Partially correct prediction.
+		{
+			input: Input{mat.NewDense(1, 3, []float64{0, 1, 2}), mat.NewDense(1, 3, []float64{0, 1, 1})},
+			want:  2.0 / 3.0,
+		},
+	} {
+		if got := Accuracy(tc.input.predicitons, tc.input.labels); !nearlyEqual(got, tc.want) {
+			t.Errorf("Accuracy(input%v) = %v, want %v", n+1, got, tc.want)
+		}
+	}
+}
 
 func TestSoftmax(t *testing.T) {
 	for n, tc := range []struct {
@@ -313,4 +328,8 @@ func panicCheck(t *testing.T, n int, panicMessage string) {
 	} else if panicMessage != "" {
 		t.Errorf("softmax with input No. %v does not panic when it must", n+1)
 	}
+}
+
+func nearlyEqual(a, b float64) bool {
+	return math.Abs(a-b) < epsilon
 }

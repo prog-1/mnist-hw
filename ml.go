@@ -13,13 +13,6 @@ All vectors are single row matrices, because it is easier to write such in code.
 All matrices store vectors as rows, because in gonum/mat matrices are stored in row-major order.
 */
 
-// TODO:
-// * Test accuracy
-// * Add hidden layer
-// * Add batching
-// * Backpropagations
-// * Try tangent function out
-
 const (
 	digitCount = 10
 )
@@ -139,18 +132,15 @@ func dCost(x, labels, predictions *mat.Dense) (dw, db *mat.Dense) {
 }
 
 // Returns percentage of correct predictions.
-// x - N x 784, labels - 1 x N, w = 784 x 10, b - 1 x 10
-func Accuracy(x, labels, w, b *mat.Dense) float64 {
-	predictions := convertPredictions(inference(x, w, b)) // 1 x N
-
+// predictions - 1 x N, labels - 1 x N
+func Accuracy(predictions, labels *mat.Dense) float64 {
 	N := predictions.RawMatrix().Cols
 	var correctCount int
 	for i := 0; i < N; i++ {
-		if predictions.At(0, i) == predictions.At(0, i) {
+		if predictions.At(0, i) == labels.At(0, i) {
 			correctCount++
 		}
 	}
-
 	return float64(correctCount) / float64(N)
 }
 
